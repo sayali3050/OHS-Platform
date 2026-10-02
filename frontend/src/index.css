@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Palette: graphite/steel base; colour is reserved for meaning, following ISO 7010 sign semantics. */
+@layer base {
+  :root {
+    --bg: 210 14% 95%;          /* cool concrete */
+    --surface: 0 0% 100%;
+    --sunken: 210 16% 91%;
+    --ink: 212 24% 14%;         /* graphite #1c2530 */
+    --muted: 212 12% 40%;
+    --line: 212 16% 85%;
+    --steel: 212 20% 30%;
+    --signal: 43 100% 47%;      /* hi-vis amber #f0b000 — primary action only */
+    --signal-ink: 212 24% 12%;
+    --safe: 150 62% 30%;
+    --caution: 32 95% 42%;
+    --danger: 6 72% 45%;
+    --info: 208 70% 40%;
+    --shadow: 212 30% 20%;
+    color-scheme: light;
+  }
+  .dark {
+    --bg: 212 24% 9%;
+    --surface: 212 22% 13%;
+    --sunken: 212 24% 7%;
+    --ink: 210 20% 93%;
+    --muted: 212 12% 64%;
+    --line: 212 18% 22%;
+    --steel: 212 14% 75%;
+    --signal: 43 100% 52%;
+    --signal-ink: 212 24% 10%;
+    --safe: 150 50% 48%;
+    --caution: 36 95% 55%;
+    --danger: 6 80% 62%;
+    --info: 208 80% 64%;
+    --shadow: 0 0% 0%;
+    color-scheme: dark;
+  }
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-bg text-ink font-sans antialiased; font-size: 16px; line-height: 1.5; }
+  h1, h2, h3 { @apply font-display tracking-tight; line-height: 1.15; }
+  :focus-visible { outline: 3px solid hsl(var(--signal)); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+}
