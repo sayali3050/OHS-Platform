@@ -36,3 +36,5 @@ def per_user_limit(limiter: SlidingWindowLimiter):
 
 
 login_limiter = SlidingWindowLimiter(limit=10, window_seconds=60)
+report_limiter = SlidingWindowLimiter(limit=20, window_seconds=60)   # incident + hazard submissions per user
+emergency_limiter = SlidingWindowLimiter(limit=5, window_seconds=60)

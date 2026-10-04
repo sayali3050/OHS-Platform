@@ -14,6 +14,13 @@ class Language(str, enum.Enum):
     de = "de"
 
 
+class HealthCheckResult(str, enum.Enum):
+    fit = "fit"
+    fit_with_restrictions = "fit_with_restrictions"
+    temporarily_unfit = "temporarily_unfit"
+    unfit = "unfit"
+
+
 class Shift(str, enum.Enum):
     morning = "morning"
     evening = "evening"

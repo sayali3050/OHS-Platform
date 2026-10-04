@@ -5,9 +5,11 @@ import { AuthLayout } from "@/layouts/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/field";
 import { FormAlert } from "@/components/ui/misc";
+import { useT } from "@/i18n";
 import { api, ApiError } from "@/services/api";
 
 export function ForgotPasswordPage() {
+  const { t } = useT();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState("");
   const [busy, setBusy] = useState(false);
@@ -16,23 +18,23 @@ export function ForgotPasswordPage() {
     e.preventDefault();
     setBusy(true);
     try { setSent((await api.auth.forgotPassword(email)).message); }
-    catch (err) { toast.error(err instanceof ApiError ? err.message : "Request failed"); }
+    catch (err) { toast.error(err instanceof ApiError ? err.message : t("forgot.failed")); }
     finally { setBusy(false); }
   }
 
   return (
-    <AuthLayout title="Reset your password" subtitle="Enter your work email and we'll send a reset link.">
+    <AuthLayout title={t("forgot.title")} subtitle={t("forgot.subtitle")}>
       {sent ? (
         <div className="space-y-4">
           <p className="rounded-md border-l-4 border-safe bg-safe/10 px-4 py-3 font-medium">{sent}</p>
-          <p className="text-sm text-muted">In the local development setup, the link is printed in the backend logs instead of being emailed.</p>
-          <Link to="/login" className="font-semibold text-info hover:underline">Back to sign in</Link>
+          <p className="text-sm text-muted">{t("forgot.devNote")}</p>
+          <Link to="/login" className="font-semibold text-info hover:underline">{t("forgot.back")}</Link>
         </div>
       ) : (
         <form onSubmit={submit} className="space-y-5">
-          <TextField label="Work email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-          <Button type="submit" size="lg" className="w-full" loading={busy}>Send reset link</Button>
-          <Link to="/login" className="block text-[15px] font-semibold text-info hover:underline">Back to sign in</Link>
+          <TextField label={t("register.workEmail")} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Button type="submit" size="lg" className="w-full" loading={busy}>{t("forgot.send")}</Button>
+          <Link to="/login" className="block text-[15px] font-semibold text-info hover:underline">{t("forgot.back")}</Link>
         </form>
       )}
     </AuthLayout>
@@ -40,10 +42,11 @@ export function ForgotPasswordPage() {
 }
 
 export function ResetPasswordPage() {
+  const { t } = useT();
   const token = useSearchParams()[0].get("token") ?? "";
   const nav = useNavigate();
   const [pw, setPw] = useState("");
-  const [error, setError] = useState(token ? "" : "This reset link is missing its token. Request a new one.");
+  const [error, setError] = useState(token ? "" : t("reset.missingToken"));
   const [busy, setBusy] = useState(false);
 
   async function submit(e: FormEvent) {
@@ -51,19 +54,19 @@ export function ResetPasswordPage() {
     setBusy(true); setError("");
     try {
       await api.auth.resetPassword(token, pw);
-      toast.success("Password changed. Sign in with your new password.");
+      toast.success(t("reset.done"));
       nav("/login", { replace: true });
-    } catch (err) { setError(err instanceof ApiError ? err.message : "Reset failed"); }
+    } catch (err) { setError(err instanceof ApiError ? err.message : t("reset.failed")); }
     finally { setBusy(false); }
   }
 
   return (
-    <AuthLayout title="Choose a new password" subtitle="Reset links work once and expire after 30 minutes.">
+    <AuthLayout title={t("reset.title")} subtitle={t("reset.subtitle")}>
       <form onSubmit={submit} className="space-y-5">
         {error && <FormAlert>{error}</FormAlert>}
-        <TextField label="New password" type="password" autoComplete="new-password" required minLength={8}
-          value={pw} onChange={(e) => setPw(e.target.value)} hint="At least 8 characters, with a letter and a number." />
-        <Button type="submit" size="lg" className="w-full" loading={busy} disabled={!token}>Change password</Button>
+        <TextField label={t("reset.newPassword")} type="password" autoComplete="new-password" required minLength={8}
+          value={pw} onChange={(e) => setPw(e.target.value)} hint={t("register.passwordHint")} />
+        <Button type="submit" size="lg" className="w-full" loading={busy} disabled={!token}>{t("reset.submit")}</Button>
       </form>
     </AuthLayout>
   );

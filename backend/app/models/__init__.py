@@ -5,10 +5,11 @@ from app.models.incidents import (
     Attachment, CorrectiveAction, Hazard, Incident, PreventiveAction, RiskAssessment,
 )
 from app.models.operations import (
-    ChecklistResult, DrudgeryAssessment, EmergencyEvent, ErgonomicAssessment, Notification,
+    ChecklistResult, DrudgeryAssessment, EmergencyContact, EmergencyEvent, EmergencyResponse, ErgonomicAssessment,
+    Notification,
     SafetyChecklist, WellbeingCheckin, WorkerFeedback,
 )
-from app.models.organization import Department, Location, Role, User, Worker
+from app.models.organization import Department, HealthCheck, Location, Role, User, Worker, WorkHistory
 from app.models.ppe import PPEAssignment, PPEItem
 from app.models.training import QuizAttempt, QuizQuestion, TrainingCourse, TrainingProgress, TrainingQuiz
 
@@ -17,5 +18,6 @@ __all__ = [
     "Incident", "PreventiveAction", "RiskAssessment", "ChecklistResult", "DrudgeryAssessment", "EmergencyEvent",
     "ErgonomicAssessment", "Notification", "SafetyChecklist", "WellbeingCheckin", "WorkerFeedback", "Department",
     "Location", "Role", "User", "Worker", "PPEAssignment", "PPEItem", "QuizAttempt", "QuizQuestion",
-    "TrainingCourse", "TrainingProgress", "TrainingQuiz",
+    "TrainingCourse", "TrainingProgress", "TrainingQuiz", "EmergencyContact", "EmergencyResponse", "HealthCheck",
+    "WorkHistory",
 ]

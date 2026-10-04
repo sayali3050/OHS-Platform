@@ -1,7 +1,7 @@
 """Checklists, ergonomics/drudgery, wellbeing, emergencies, notifications, feedback."""
 from datetime import date, datetime
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base, TimestampMixin
@@ -76,8 +76,29 @@ class EmergencyEvent(TimestampMixin, Base):
     location_id: Mapped[int | None] = mapped_column(ForeignKey("locations.id", ondelete="SET NULL"))
     notes: Mapped[str | None] = mapped_column(Text)
     incident_id: Mapped[int | None] = mapped_column(ForeignKey("incidents.id", ondelete="SET NULL"))
-    acknowledged_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    acknowledged_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))  # who resolved it
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolution_note: Mapped[str | None] = mapped_column(Text)
+
+
+class EmergencyResponse(Base):
+    """Roll call: each person's answer to an active emergency alarm ("I'm safe" or "I need help")."""
+    __tablename__ = "emergency_responses"
+    __table_args__ = (UniqueConstraint("event_id", "user_id", name="uq_emergency_responses_event_user"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey("emergency_events.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)  # safe | need_help
+    responded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class EmergencyContact(TimestampMixin, Base):
+    """Site emergency numbers that admins manage in the app (shown alongside EMERGENCY_CONTACTS)."""
+    __tablename__ = "emergency_contacts"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    label: Mapped[str] = mapped_column(String(80), nullable=False)
+    phone: Mapped[str] = mapped_column(String(32), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class Notification(TimestampMixin, Base):

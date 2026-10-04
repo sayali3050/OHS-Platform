@@ -10,3 +10,4 @@ pyjwt==2.10.1
 psycopg[binary]==3.2.3
 python-multipart==0.0.20
 openai==1.58.1
+pillow==11.3.0

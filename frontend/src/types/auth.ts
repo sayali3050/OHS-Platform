@@ -22,7 +22,9 @@ export interface RegisterPayload {
 }
 export interface RegisterResponse { user: User; requires_approval: boolean; message: string }
 export interface Page<T> { items: T[]; total: number; page: number; page_size: number }
-export interface SystemInfo { app_name: string; environment: string; ai_demo_mode: boolean; demo_data: boolean }
+export interface SystemInfo {
+  app_name: string; environment: string; ai_demo_mode: boolean; ai_model: string | null; demo_data: boolean;
+}
 
 export const LANGUAGES: { value: Language; label: string; native: string }[] = [
   { value: "en", label: "English", native: "English" },
