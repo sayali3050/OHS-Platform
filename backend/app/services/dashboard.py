@@ -1,21 +1,25 @@
 """Worker dashboard and an explainable safety score.
 
 The score is a weighted average of compliance components, each a plain percentage a worker can check:
-  PPE       share of assigned PPE that is in date and passed its last inspection
-  Training  share of mandatory courses with a current certificate
+  PPE         share of assigned PPE that is in date and passed its last inspection
+  Training    share of mandatory courses with a current certificate
+  Checklists  share of the last 7 days (before today) on which the person completed a daily checklist
 A component with nothing to measure (e.g. no PPE assigned) is left out and the weights are re-normalised,
-rather than counted as 0% or 100%. Phase 6 adds checklist completion as a third component.
+rather than counted as 0% or 100%. The three components weigh the same.
 """
 from datetime import date, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import Hazard, Incident, PPEAssignment, TrainingCourse, TrainingProgress, User
+from app.models import (
+    ChecklistResult, Hazard, Incident, PPEAssignment, SafetyChecklist, TrainingCourse, TrainingProgress, User,
+)
 from app.models.enums import HazardStatus, IncidentStatus
 from app.services.reports import hazard_summary, incident_summary, with_relations
 
-WEIGHTS = {"ppe": 0.5, "training": 0.5}
+WEIGHTS = {"ppe": 1.0, "training": 1.0, "checklists": 1.0}
+CHECKLIST_DAYS = 7
 DUE_SOON_DAYS = 30
 
 
@@ -67,7 +71,24 @@ def _training(db: Session, user: User, today: date) -> tuple[list[dict], int | N
     return items, round(100 * sum(i["current"] for i in mandatory) / len(mandatory))
 
 
-def _explain(key: str, items: list[dict]) -> str:
+def _checklists(db: Session, user: User, today: date) -> tuple[dict, int | None]:
+    """Days in the last week (not counting today, which isn't over) with at least one daily checklist completed."""
+    has_daily = db.scalar(select(func.count(SafetyChecklist.id)).where(
+        SafetyChecklist.is_active.is_(True), SafetyChecklist.frequency == "daily",
+        or_(SafetyChecklist.department_id.is_(None), SafetyChecklist.department_id == user.department_id)))
+    if not has_daily:
+        return {"done_days": 0, "days": CHECKLIST_DAYS}, None
+    start = today - timedelta(days=CHECKLIST_DAYS)
+    times = db.scalars(select(ChecklistResult.completed_at).join(SafetyChecklist).where(
+        ChecklistResult.user_id == user.id, SafetyChecklist.frequency == "daily")).all()
+    days = {t.date() for t in times}
+    done = sum(1 for d in days if start <= d < today)
+    return {"done_days": done, "days": CHECKLIST_DAYS}, round(100 * done / CHECKLIST_DAYS)
+
+
+def _explain(key: str, items) -> str:
+    if key == "checklists":
+        return f"Daily checklist completed on {items['done_days']} of the last {items['days']} days."
     if key == "ppe":
         bad = [i for i in items if not i["compliant"]]
         if not bad:
@@ -86,7 +107,9 @@ def safety_score(db: Session, user: User, today: date | None = None) -> dict:
     today = today or date.today()
     ppe_items, ppe_pct = _ppe(db, user, today)
     training_items, training_pct = _training(db, user, today)
-    parts = [("ppe", "PPE compliance", ppe_pct, ppe_items), ("training", "Mandatory training", training_pct, training_items)]
+    checklist_info, checklist_pct = _checklists(db, user, today)
+    parts = [("ppe", "PPE compliance", ppe_pct, ppe_items), ("training", "Mandatory training", training_pct, training_items),
+             ("checklists", "Daily checklists", checklist_pct, checklist_info)]
     measured = [(k, label, pct, items) for k, label, pct, items in parts if pct is not None]
     total_w = sum(WEIGHTS[k] for k, *_ in measured)
     components = [{
@@ -99,7 +122,7 @@ def safety_score(db: Session, user: User, today: date | None = None) -> dict:
         "score": score, "band": band, "components": components,
         "method": "Weighted average of the components below. Each is a simple percentage you can check in the "
                   "lists on this page.",
-        "ppe": ppe_items, "training": training_items,
+        "ppe": ppe_items, "training": training_items, "checklists": checklist_info,
     }
 
 

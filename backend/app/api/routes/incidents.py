@@ -1,9 +1,12 @@
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
+from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.ai import service as ai
+from app.api.routes.ai import ai_limiter
 from app.auth.deps import get_current_user, require_staff
 from app.database.session import get_db
 from app.models import CorrectiveAction, Incident, PreventiveAction, User
@@ -144,6 +147,42 @@ def change_status(incident_id: int, body: StatusChange, request: Request, user: 
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only this department's supervisor or an admin can do this.")
     except workflow.WorkflowError as e:
         raise field_error("note" if "note" in str(e) else "status", str(e))
+    db.commit()
+    db.refresh(incident)
+    return reports.incident_out(incident, user)
+
+
+class RootCauseIn(BaseModel):
+    root_cause: str = Field(min_length=10, max_length=2000)
+
+
+@router.post("/{incident_id}/root-cause/suggest", response_model=IncidentOut,
+             summary="AI 5 Whys suggestion for the investigator (a suggestion only; nothing is decided)")
+def suggest_root_cause(incident_id: int, request: Request, user: User = Depends(per_user_limit(ai_limiter)),
+                       db: Session = Depends(get_db)):
+    incident = _visible_incident(db, incident_id, user)
+    if not workflow.can_manage(incident, user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only this department's supervisor or an admin can do this.")
+    analysis, demo = ai.suggest_root_cause(incident, user.preferred_language)
+    incident.ai_analysis = {**(incident.ai_analysis or {}), "root_cause": {
+        **analysis.model_dump(mode="json"), "demo_mode": demo, "at": datetime.now(timezone.utc).isoformat()}}
+    audit.record(db, "incident.root_cause_suggested", user_id=user.id, entity_type="incident", entity_id=incident.id,
+                 details={"demo": demo}, request=request)
+    db.commit()
+    db.refresh(incident)
+    return reports.incident_out(incident, user)
+
+
+@router.put("/{incident_id}/root-cause", response_model=IncidentOut,
+            summary="Record the root cause the investigator confirmed")
+def set_root_cause(incident_id: int, body: RootCauseIn, request: Request, user: User = Depends(require_staff),
+                   db: Session = Depends(get_db)):
+    incident = _visible_incident(db, incident_id, user)
+    if not workflow.can_manage(incident, user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only this department's supervisor or an admin can do this.")
+    incident.root_cause = body.root_cause.strip()
+    audit.record(db, "incident.root_cause", user_id=user.id, entity_type="incident", entity_id=incident.id,
+                 details={"root_cause": incident.root_cause[:200]}, request=request)
     db.commit()
     db.refresh(incident)
     return reports.incident_out(incident, user)

@@ -81,7 +81,8 @@ def test_contacts_env_parsing(monkeypatch):
 def test_demo_worker_score_is_explained(client, worker_h):
     d = client.get("/api/dashboard/worker", headers=worker_h).json()
     parts = {c["key"]: c for c in d["components"]}
-    assert d["score"] == 90 and d["band"] == "good"
+    # PPE 80 (gloves overdue), training 100, daily checklists 100: equal weights -> 93.
+    assert d["score"] == 93 and d["band"] == "good"
     assert parts["ppe"]["score"] == 80 and "gloves (overdue)" in parts["ppe"]["explanation"]
     assert parts["training"]["score"] == 100
     gloves = next(p for p in d["ppe"] if p["name"] == "Gloves")
@@ -96,8 +97,9 @@ def test_score_reweights_when_a_component_has_no_data():
         u.worker_profile = None  # no PPE to measure (not committed)
         s = safety_score(db, u)
         db.rollback()
-    assert [c["key"] for c in s["components"]] == ["training"]
-    assert s["components"][0]["weight"] == 1.0 and s["score"] == s["components"][0]["score"]
+    keys = [c["key"] for c in s["components"]]
+    assert "ppe" not in keys and "training" in keys
+    assert abs(sum(c["weight"] for c in s["components"]) - 1) < 0.02
 
 
 def test_dashboard_is_for_workers(client, supervisor_h):

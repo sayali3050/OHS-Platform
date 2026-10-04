@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -13,12 +13,13 @@ from app.database.session import get_db
 from app.models import Department, User
 from app.models.enums import RoleName
 from app.schemas.auth import (
-    DepartmentOut, ForgotPasswordRequest, LoginRequest, RegisterRequest, RegisterResponse,
+    ChangePasswordRequest, DepartmentOut, ForgotPasswordRequest, LoginRequest, RegisterRequest, RegisterResponse,
     ResetPasswordRequest, TokenResponse, UserOut, user_out,
 )
 from app.schemas.users import UserUpdate
-from app.services import audit
+from app.services import audit, mailer
 from app.services.users import DuplicateUserError, create_user
+from app.utils.forms import field_error
 from app.utils.rate_limit import login_limiter
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -103,8 +104,23 @@ def _reset_fingerprint(user: User) -> str:
     return user.password_hash[-12:]
 
 
+@router.post("/change-password", status_code=204, summary="Change your own password (needs the current one)")
+def change_password(body: ChangePasswordRequest, request: Request, user: User = Depends(get_current_user),
+                    db: Session = Depends(get_db)):
+    if not login_limiter.hit(f"change-password:{user.id}"):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many attempts. Wait a minute.")
+    if not verify_password(body.current_password, user.password_hash):
+        raise field_error("current_password", "Your current password is not correct.")
+    if body.new_password == body.current_password:
+        raise field_error("new_password", "Choose a password different from the current one.")
+    user.password_hash = hash_password(body.new_password)
+    user.must_change_password = False
+    audit.record(db, "user.password_change", user_id=user.id, entity_type="user", entity_id=user.id, request=request)
+    db.commit()
+
+
 @router.post("/forgot-password", status_code=202)
-def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
+def forgot_password(body: ForgotPasswordRequest, background: BackgroundTasks, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == body.email.lower()))
     if user:
         now = datetime.now(timezone.utc)
@@ -113,8 +129,15 @@ def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
              "exp": now + timedelta(minutes=30)},
             settings.jwt_secret_key, algorithm=settings.jwt_algorithm,
         )
-        # No mail server is configured, so development builds log the link instead of emailing it.
-        log.warning("Password reset link for %s: http://localhost:5173/reset-password?token=%s", user.email, token)
+        link = f"{settings.app_url.rstrip('/')}/reset-password?token={token}"
+        if mailer.enabled():
+            # Sent after the response, so the reply takes the same time whether or not the account exists.
+            background.add_task(mailer.send, user.email, "Reset your SafeOps password",
+                                f"Hello {user.full_name},\n\nUse this link within 30 minutes to choose a new password:\n"
+                                f"{link}\n\nIf you didn't ask for this, ignore this email; your password is unchanged.")
+        else:
+            # No mail server configured: the link goes to the API log, where an administrator can find it.
+            log.warning("Password reset link for %s: %s", user.email, link)
     # Same response whether or not the account exists, so emails can't be enumerated.
     return {"message": "If that email is registered, a reset link has been sent."}
 
@@ -129,5 +152,6 @@ def reset_password(body: ResetPasswordRequest, request: Request, db: Session = D
     if payload.get("type") != "reset" or user is None or payload.get("fp") != _reset_fingerprint(user):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "This reset link is invalid or has expired.")
     user.password_hash = hash_password(body.new_password)
+    user.must_change_password = False
     audit.record(db, "user.password_reset", user_id=user.id, request=request)
     db.commit()

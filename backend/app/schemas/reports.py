@@ -121,6 +121,8 @@ class IncidentOut(IncidentSummary):
     people_involved: str | None
     investigator: PersonRef | None
     attachments: list[AttachmentOut]
+    root_cause: str | None = None             # confirmed by the investigator
+    root_cause_suggestion: dict | None = None  # last AI 5 Whys suggestion; only sent to people who manage the report
 
 
 class HazardSummary(BaseModel):

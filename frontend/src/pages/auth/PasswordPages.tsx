@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { Button } from "@/components/ui/button";
-import { TextField } from "@/components/ui/field";
+import { PasswordField, TextField } from "@/components/ui/field";
 import { FormAlert } from "@/components/ui/misc";
 import { useT } from "@/i18n";
 import { api, ApiError } from "@/services/api";
@@ -27,13 +27,14 @@ export function ForgotPasswordPage() {
       {sent ? (
         <div className="space-y-4">
           <p className="rounded-md border-l-4 border-safe bg-safe/10 px-4 py-3 font-medium">{sent}</p>
-          <p className="text-sm text-muted">{t("forgot.devNote")}</p>
+          <p className="text-sm text-muted">{t("forgot.noEmail")}</p>
           <Link to="/login" className="font-semibold text-info hover:underline">{t("forgot.back")}</Link>
         </div>
       ) : (
         <form onSubmit={submit} className="space-y-5">
           <TextField label={t("register.workEmail")} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
           <Button type="submit" size="lg" className="w-full" loading={busy}>{t("forgot.send")}</Button>
+          <p className="text-sm text-muted">{t("forgot.noEmail")}</p>
           <Link to="/login" className="block text-[15px] font-semibold text-info hover:underline">{t("forgot.back")}</Link>
         </form>
       )}
@@ -64,8 +65,9 @@ export function ResetPasswordPage() {
     <AuthLayout title={t("reset.title")} subtitle={t("reset.subtitle")}>
       <form onSubmit={submit} className="space-y-5">
         {error && <FormAlert>{error}</FormAlert>}
-        <TextField label={t("reset.newPassword")} type="password" autoComplete="new-password" required minLength={8}
-          value={pw} onChange={(e) => setPw(e.target.value)} hint={t("register.passwordHint")} />
+        <PasswordField label={t("reset.newPassword")} autoComplete="new-password" required minLength={8}
+          value={pw} onChange={(e) => setPw(e.target.value)} hint={t("register.passwordHint")}
+          showLabel={t("pw.show")} hideLabel={t("pw.hide")} />
         <Button type="submit" size="lg" className="w-full" loading={busy} disabled={!token}>{t("reset.submit")}</Button>
       </form>
     </AuthLayout>

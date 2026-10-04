@@ -3,6 +3,14 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from app.models.enums import Language, RoleName
 
 
+def _strong(v: str) -> str:
+    from app.services.users import password_problem  # local import: services import these schemas
+    problem = password_problem(v)
+    if problem:
+        raise ValueError(problem)
+    return v
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
@@ -19,12 +27,7 @@ class RegisterRequest(BaseModel):
     phone: str | None = Field(default=None, max_length=32, pattern=r"^[0-9+\-\s()]*$")
     preferred_language: Language = Language.en
 
-    @field_validator("password")
-    @classmethod
-    def strong_enough(cls, v: str) -> str:
-        if not any(c.isdigit() for c in v) or not any(c.isalpha() for c in v):
-            raise ValueError("Password must contain at least one letter and one number")
-        return v
+    _password_rule = field_validator("password")(_strong)
 
     @field_validator("role")
     @classmethod
@@ -41,6 +44,13 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
+    _password_rule = field_validator("new_password")(_strong)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+    _password_rule = field_validator("new_password")(_strong)
 
 
 class DepartmentOut(BaseModel):
@@ -61,6 +71,7 @@ class UserOut(BaseModel):
     role: RoleName
     department: DepartmentOut | None
     is_active: bool
+    must_change_password: bool = False
 
 
 class TokenResponse(BaseModel):
@@ -82,5 +93,5 @@ def user_out(user) -> UserOut:
         id=user.id, email=user.email, full_name=user.full_name, employee_id=user.employee_id, phone=user.phone,
         preferred_language=user.preferred_language, role=user.role.name,
         department=DepartmentOut.model_validate(user.department) if user.department else None,
-        is_active=user.is_active,
+        is_active=user.is_active, must_change_password=user.must_change_password,
     )

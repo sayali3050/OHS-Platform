@@ -25,7 +25,9 @@ const { StatusSteps } = await import("@/components/reports/badges");
 const { default: ReportHazardPage } = await import("@/pages/reports/ReportHazardPage");
 const { default: ReportIncidentPage } = await import("@/pages/reports/ReportIncidentPage");
 const { timeAgo } = await import("@/utils/format");
-const { I18nProvider, translate } = await import("@/i18n");
+const { I18nProvider, loadLanguage, translate } = await import("@/i18n");
+await loadLanguage("hi");
+await loadLanguage("de");
 
 const file = (name: string, type: string, size = 1000) => new File([new Uint8Array(size)], name, { type });
 

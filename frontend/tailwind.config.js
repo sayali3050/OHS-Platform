@@ -15,6 +15,7 @@ export default {
         signal: { DEFAULT: token("signal"), ink: token("signal-ink") },
         steel: token("steel"),
         safe: token("safe"), caution: token("caution"), danger: token("danger"), info: token("info"),
+        "danger-solid": token("danger-solid"), "safe-solid": token("safe-solid"),
       },
       borderRadius: { sm: "4px", md: "6px", lg: "10px" },
       boxShadow: { panel: "0 1px 0 hsl(var(--line) / 1), 0 8px 24px -12px hsl(var(--shadow) / 0.35)" },

@@ -101,6 +101,9 @@ class RiskAssessment(TimestampMixin, Base):
     recommended_controls: Mapped[list | None] = mapped_column(JSON)  # [{level: ControlLevel, measure: str}]
     ai_explanation: Mapped[str | None] = mapped_column(Text)
     assessed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id", ondelete="SET NULL"), index=True)
+    location_id: Mapped[int | None] = mapped_column(ForeignKey("locations.id", ondelete="SET NULL"))
+    review_due: Mapped[date | None] = mapped_column(Date, index=True)
 
 
 class CorrectiveAction(TimestampMixin, Base):

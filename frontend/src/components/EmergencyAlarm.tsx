@@ -160,11 +160,11 @@ function AlarmOverlay({ event, muted, onMute }: { event: ActiveEmergency; muted:
 
   return (
     <div role="alertdialog" aria-modal="true" aria-labelledby="alarm-title" aria-describedby="alarm-where"
-      className="fixed inset-0 z-[70] overflow-y-auto bg-danger text-white">
+      className="fixed inset-0 z-[70] overflow-y-auto bg-danger-solid text-white">
       <div className="pointer-events-none absolute inset-0 animate-pulse bg-black/15 motion-reduce:animate-none" aria-hidden />
       <div className="relative mx-auto flex min-h-full max-w-xl flex-col gap-5 px-4 py-8 sm:py-12">
         <div className="flex items-center justify-between gap-3">
-          <p className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-widest text-white/85">
+          <p className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-widest text-white">
             <ShieldAlert className="h-5 w-5" aria-hidden /> {t("alarm.title")}
           </p>
           <Button variant="ghost" size="sm" onClick={onMute} className="text-white hover:bg-white/15" aria-pressed={muted}>
@@ -175,7 +175,7 @@ function AlarmOverlay({ event, muted, onMute }: { event: ActiveEmergency; muted:
         <div>
           <h1 id="alarm-title" className="text-[34px] font-bold leading-tight sm:text-[42px]">{event.label}</h1>
           <p id="alarm-where" className="mt-2 text-xl font-semibold">{t("alarm.where", { where: event.where })}</p>
-          <p className="mt-1 text-white/85">
+          <p className="mt-1 text-white">
             {t("alarm.raisedBy", { name: event.raised_by ?? t("act.someone"), time: dateTime(event.created_at, locale) })}
           </p>
           {event.notes && <p className="mt-2 rounded-md bg-black/20 px-3 py-2">“{event.notes}”</p>}
@@ -185,7 +185,7 @@ function AlarmOverlay({ event, muted, onMute }: { event: ActiveEmergency; muted:
           <ol className="mt-2 space-y-2">
             {event.steps.map((s, i) => (
               <li key={s} className="flex gap-3">
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-danger font-display text-sm font-bold text-white">{i + 1}</span>
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-danger-solid font-display text-sm font-bold text-white">{i + 1}</span>
                 <span className="pt-0.5 text-[17px] leading-snug">{s}</span>
               </li>
             ))}
@@ -193,7 +193,7 @@ function AlarmOverlay({ event, muted, onMute }: { event: ActiveEmergency; muted:
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <Button ref={first} size="lg" onClick={() => answer("safe")} loading={busy === "safe"} disabled={!!busy}
-            className="h-16 bg-safe text-lg text-white hover:bg-safe/90">
+            className="h-16 bg-safe-solid text-lg text-white hover:bg-safe-solid/90">
             <CheckCircle2 className="h-6 w-6" aria-hidden /> {t("alarm.safe")}
           </Button>
           <Button size="lg" onClick={() => answer("need_help")} loading={busy === "need_help"} disabled={!!busy}
@@ -221,10 +221,10 @@ export function EmergencyBanner() {
     : current.my_response === "safe" ? t("alarm.youSafe")
     : current.my_response === "need_help" ? t("alarm.youNeedHelp") : "";
   return (
-    <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-danger px-4 py-2 text-[15px] text-white sm:px-6">
+    <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-danger-solid px-4 py-2 text-[15px] text-white sm:px-6">
       <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden />
       <span className="font-semibold">{t("alarm.banner", { label: current.label, where: current.where })}</span>
-      {status && <span className="text-white/85">{status}</span>}
+      {status && <span className="text-white">{status}</span>}
       <Link to="/app/emergency" className="ml-auto font-semibold underline underline-offset-4">{t("alarm.details")}</Link>
     </div>
   );

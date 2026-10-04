@@ -5,6 +5,7 @@ import { Badge, EmptyState, Panel, Skeleton } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { DetailsTab } from "@/components/profile/DetailsTab";
 import { HealthTab } from "@/components/profile/HealthTab";
+import { PasswordActions } from "@/components/profile/PasswordActions";
 import { RecordsTab, WorkHistoryTab } from "@/components/profile/RecordsTab";
 import { TeamTab } from "@/components/profile/TeamTab";
 import { useT, type MessageKey } from "@/i18n";
@@ -27,7 +28,7 @@ function PersonView({ profile, onChange, withTeam }: { profile: Profile; onChang
 
   return (
     <div className="space-y-6">
-      <Panel className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
+      <Panel className="flex flex-col gap-4 p-5 sm:flex-row sm:flex-wrap sm:items-center">
         <div aria-hidden className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-ink font-display text-2xl font-bold text-bg">
           {initials(profile.full_name)}
         </div>
@@ -40,6 +41,7 @@ function PersonView({ profile, onChange, withTeam }: { profile: Profile; onChang
           {!profile.is_active && <Badge tone="neutral">{t("users.inactive")}</Badge>}
           {profile.blood_group && <Badge tone="danger">{t("prof.bloodGroup")}: {profile.blood_group}</Badge>}
         </div>
+        <div className="flex flex-wrap gap-2 sm:basis-full sm:justify-end"><PasswordActions profile={profile} /></div>
       </Panel>
 
       <div role="tablist" aria-label={t("prof.sections")} className="flex gap-1 overflow-x-auto border-b border-line">

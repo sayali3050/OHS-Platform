@@ -65,7 +65,7 @@ export function NotificationBell() {
         onClick={() => setOpen((o) => !o)} className="relative">
         <Bell className="h-5 w-5" />
         {unread > 0 && (
-          <span aria-hidden className="absolute right-0.5 top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-danger px-1 text-[11px] font-bold text-white">
+          <span aria-hidden className="absolute right-0.5 top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-danger-solid px-1 text-[11px] font-bold text-white">
             {unread > 99 ? "99+" : unread}
           </span>
         )}

@@ -1,13 +1,13 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { Button } from "@/components/ui/button";
-import { Checkbox, TextField } from "@/components/ui/field";
+import { Checkbox, PasswordField, TextField } from "@/components/ui/field";
 import { FormAlert } from "@/components/ui/misc";
 import { useAuth } from "@/hooks/useAuth";
 import { useT } from "@/i18n";
-import { ApiError } from "@/services/api";
+import { api, ApiError } from "@/services/api";
 import { homePathFor } from "@/utils/cn";
 
 const DEMO = [
@@ -26,6 +26,9 @@ export default function LoginPage() {
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // Demo shortcuts only on a demo install; a real site shows just the sign-in form.
+  const [demo, setDemo] = useState(false);
+  useEffect(() => { api.systemInfo().then((i) => setDemo(i.demo_data)).catch(() => {}); }, []);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -34,7 +37,7 @@ export default function LoginPage() {
     try {
       const user = await login(email, password, remember);
       toast.success(t("login.welcome", { name: user.full_name }));
-      nav(from ?? homePathFor(user.role), { replace: true });
+      nav(user.must_change_password ? "/change-password" : from ?? homePathFor(user.role), { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("login.failed"));
     } finally {
@@ -48,8 +51,8 @@ export default function LoginPage() {
         {error && <FormAlert>{error}</FormAlert>}
         <TextField label={t("login.email")} type="email" autoComplete="email" required value={email}
           onChange={(e) => setEmail(e.target.value)} />
-        <TextField label={t("login.password")} type="password" autoComplete="current-password" required value={password}
-          onChange={(e) => setPassword(e.target.value)} />
+        <PasswordField label={t("login.password")} autoComplete="current-password" required value={password}
+          onChange={(e) => setPassword(e.target.value)} showLabel={t("pw.show")} hideLabel={t("pw.hide")} />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Checkbox label={t("login.remember")} checked={remember} onChange={(e) => setRemember(e.target.checked)} />
           <Link to="/forgot-password" className="text-[15px] font-semibold text-info hover:underline">{t("login.forgot")}</Link>
@@ -61,7 +64,7 @@ export default function LoginPage() {
         {t("login.newHere")} <Link to="/register" className="font-semibold text-info hover:underline">{t("login.createLink")}</Link>
       </p>
 
-      <section aria-labelledby="demo-h" className="mt-10 border-t border-line pt-6">
+      {demo && <section aria-labelledby="demo-h" className="mt-10 border-t border-line pt-6">
         <h2 id="demo-h" className="font-sans text-sm font-semibold">{t("login.demoTitle")}</h2>
         <p className="mt-1 text-sm text-muted">{t("login.demoBody")}</p>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -72,7 +75,7 @@ export default function LoginPage() {
             </Button>
           ))}
         </div>
-      </section>
+      </section>}
     </AuthLayout>
   );
 }

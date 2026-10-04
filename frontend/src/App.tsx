@@ -14,6 +14,7 @@ import type { Language } from "@/types/auth";
 
 // Route-level code splitting keeps the worker's first load small on mobile data.
 const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
+const ChangePasswordPage = lazy(() => import("@/pages/auth/ChangePasswordPage"));
 const ForgotPasswordPage = lazy(() => import("@/pages/auth/PasswordPages").then((m) => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import("@/pages/auth/PasswordPages").then((m) => ({ default: m.ResetPasswordPage })));
 const UsersPage = lazy(() => import("@/pages/app/UsersPage"));
@@ -27,6 +28,17 @@ const ReportHazardPage = lazy(() => import("@/pages/reports/ReportHazardPage"));
 const ReportsPage = lazy(() => import("@/pages/reports/ReportsPage"));
 const IncidentDetailPage = lazy(() => import("@/pages/reports/ReportDetailPages").then((m) => ({ default: m.IncidentDetailPage })));
 const AssistantPage = lazy(() => import("@/pages/app/AssistantPage"));
+const TrainingPage = lazy(() => import("@/pages/app/TrainingPage"));
+const CoursePage = lazy(() => import("@/pages/app/TrainingPage").then((m) => ({ default: m.CoursePage })));
+const CertificatePage = lazy(() => import("@/pages/app/TrainingPage").then((m) => ({ default: m.CertificatePage })));
+const PPEPage = lazy(() => import("@/pages/app/PPEPage"));
+const ChecklistsPage = lazy(() => import("@/pages/app/ChecklistsPage"));
+const AnalyticsPage = lazy(() => import("@/pages/app/AnalyticsPage"));
+const KnowledgePage = lazy(() => import("@/pages/app/KnowledgePage"));
+const KnowledgeDocPage = lazy(() => import("@/pages/app/KnowledgePage").then((m) => ({ default: m.KnowledgeDocPage })));
+const RiskPage = lazy(() => import("@/pages/app/RiskPage"));
+const WellbeingPage = lazy(() => import("@/pages/app/WellbeingPage"));
+const WorkloadPage = lazy(() => import("@/pages/app/WorkloadPage"));
 const ActionsPage = lazy(() => import("@/pages/app/ActionsPage"));
 const BoardPage = lazy(() => import("@/pages/app/BoardPage"));
 const AuditPage = lazy(() => import("@/pages/app/AuditPage"));
@@ -68,6 +80,7 @@ export default function App() {
             <Route path="/register" element={<RedirectIfAuthed><RegisterPage /></RedirectIfAuthed>} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/change-password" element={<RequireAuth><ChangePasswordPage /></RequireAuth>} />
             <Route path="/app" element={<RequireAuth><AppLayout /></RequireAuth>}>
               <Route index element={<Home />} />
               <Route path="worker" element={<RequireRole roles={["worker"]}><WorkerDashboard /></RequireRole>} />
@@ -85,6 +98,17 @@ export default function App() {
               <Route path="people/:id" element={<RequireRole roles={["supervisor", "admin"]}><PersonPage /></RequireRole>} />
               <Route path="departments" element={<DepartmentsPage />} />
               <Route path="actions" element={<ActionsPage />} />
+              <Route path="risk" element={<RiskPage />} />
+              <Route path="knowledge" element={<KnowledgePage />} />
+              <Route path="knowledge/:id" element={<KnowledgeDocPage />} />
+              <Route path="analytics" element={<RequireRole roles={["supervisor", "admin"]}><AnalyticsPage /></RequireRole>} />
+              <Route path="training" element={<TrainingPage />} />
+              <Route path="training/:id" element={<CoursePage />} />
+              <Route path="training/:id/certificate" element={<CertificatePage />} />
+              <Route path="ppe" element={<PPEPage />} />
+              <Route path="checklists" element={<ChecklistsPage />} />
+              <Route path="wellbeing" element={<WellbeingPage />} />
+              <Route path="workload" element={<RequireRole roles={["supervisor", "admin"]}><WorkloadPage /></RequireRole>} />
               <Route path="board" element={<RequireRole roles={["supervisor", "admin"]}><BoardPage /></RequireRole>} />
               <Route path="admin/audit" element={<RequireRole roles={["admin"]}><AuditPage /></RequireRole>} />
               <Route path="departments/:id" element={<DepartmentDetailPage />} />

@@ -31,7 +31,7 @@ export function EmptyState({ icon, title, body, action }: { icon: ReactNode; tit
   return (
     <div className="flex flex-col items-center px-6 py-14 text-center">
       <div className="mb-4 grid h-12 w-12 place-items-center rounded-lg bg-sunken text-muted">{icon}</div>
-      <h3 className="text-lg font-semibold">{title}</h3>
+      <h2 className="text-lg font-semibold">{title}</h2>
       <p className="mt-1 max-w-sm text-muted">{body}</p>
       {action && <div className="mt-5">{action}</div>}
     </div>

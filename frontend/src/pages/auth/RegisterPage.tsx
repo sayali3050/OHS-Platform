@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { Button } from "@/components/ui/button";
-import { SelectField, TextField } from "@/components/ui/field";
+import { PasswordField, SelectField, TextField } from "@/components/ui/field";
 import { FormAlert } from "@/components/ui/misc";
 import { useT } from "@/i18n";
 import { api, ApiError } from "@/services/api";
@@ -16,7 +16,7 @@ export default function RegisterPage() {
     full_name: "", email: "", password: "", employee_id: "", department_id: 0, role: "worker", phone: "",
     preferred_language: lang,
   });
-  const [departments, setDepartments] = useState<Department[]>([]);
+  const [departments, setDepartments] = useState<Department[] | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -47,17 +47,19 @@ export default function RegisterPage() {
     <AuthLayout title={t("register.title")} subtitle={t("register.subtitle")}>
       <form onSubmit={submit} className="space-y-5" noValidate>
         {error && <FormAlert>{error}</FormAlert>}
+        {departments?.length === 0 && <FormAlert>{t("register.noDepartments")}</FormAlert>}
         <TextField label={t("register.fullName")} autoComplete="name" required value={form.full_name} onChange={set("full_name")} error={fields.full_name} />
         <div className="grid gap-5 sm:grid-cols-2">
           <TextField label={t("register.employeeId")} required value={form.employee_id} onChange={set("employee_id")} error={fields.employee_id} placeholder="WRK-1234" />
           <TextField label={t("register.phone")} type="tel" autoComplete="tel" value={form.phone} onChange={set("phone")} error={fields.phone} />
         </div>
         <TextField label={t("register.workEmail")} type="email" autoComplete="email" required value={form.email} onChange={set("email")} error={fields.email} />
-        <TextField label={t("register.password")} type="password" autoComplete="new-password" required value={form.password}
-          onChange={set("password")} error={fields.password} hint={t("register.passwordHint")} />
+        <PasswordField label={t("register.password")} autoComplete="new-password" required value={form.password}
+          onChange={set("password")} error={fields.password} hint={t("register.passwordHint")}
+          showLabel={t("pw.show")} hideLabel={t("pw.hide")} />
         <SelectField label={t("register.department")} required value={form.department_id || ""} onChange={set("department_id")} error={fields.department_id}>
           <option value="" disabled>{t("register.chooseDepartment")}</option>
-          {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+          {(departments ?? []).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
         </SelectField>
         <div className="grid gap-5 sm:grid-cols-2">
           <SelectField label={t("register.role")} value={form.role} onChange={set("role")} error={fields.role}>

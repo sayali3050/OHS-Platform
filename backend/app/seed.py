@@ -1,6 +1,9 @@
-"""Seed synthetic DEMO data. Idempotent: safe to run on every container start.
+"""Seed the database. Idempotent: safe to run on every container start.
 
-Every name, employee ID and record created here is fictional and marked as demo data.
+Always: roles, PPE types, training courses with lessons and quizzes (general safety content).
+SEED_DEMO_DATA=true (default): a fictional demo organisation. Every name, employee ID and record is marked as demo data.
+SEED_DEMO_DATA=false (a real site): a general pre-shift checklist and the first administrator from ADMIN_EMAIL /
+ADMIN_PASSWORD. Everyone else registers themselves or is added by an admin or supervisor.
 Phase 1 seeds the organisation (roles, departments, locations, people) plus PPE and training catalogues.
 Phase 2 adds PPE assignments, training records, incidents, hazards and corrective actions (seed_history.py).
 Phase 3 adds department profiles, personal details, health checks and work history (seed_profiles.py).
@@ -17,7 +20,10 @@ from app.models import Department, Location, PPEItem, Role, TrainingCourse, User
 from app.models.enums import Language, RoleName, Shift
 from app.seed_history import seed_history
 from app.seed_profiles import seed_profiles
-from app.services.users import create_user
+from app.seed_assessments import seed_assessments
+from app.seed_training import seed_course_content, seed_general_checklist, seed_training
+from app.seed_knowledge import seed_knowledge
+from app.services.users import create_user, password_problem
 
 log = logging.getLogger("seed")
 settings = get_settings()
@@ -74,8 +80,53 @@ def _user(db, email, **kw) -> User:
     return db.scalar(select(User).where(User.email == email)) or create_user(db, email=email, **kw)
 
 
+def _seed_catalogues(db: Session) -> None:
+    for name, days in PPE:
+        if not db.scalar(select(PPEItem).where(PPEItem.name == name)):
+            db.add(PPEItem(name=name, replacement_interval_days=days))
+    for category, title, mandatory in COURSES:
+        if not db.scalar(select(TrainingCourse).where(TrainingCourse.title == title)):
+            db.add(TrainingCourse(title=title, category=category, is_mandatory=mandatory, description=f"{title}."))
+    db.flush()
+    seed_course_content(db)
+
+
+def _seed_first_admin(db: Session) -> None:
+    """Create the administrator named in .env, once. They must choose their own password at first sign-in."""
+    email = settings.admin_email.strip().lower()
+    has_admin = db.scalar(select(User.id).join(Role).where(Role.name == RoleName.admin).limit(1))
+    if not email or not settings.admin_password:
+        if not has_admin:
+            log.warning("No administrator exists. Set ADMIN_EMAIL and ADMIN_PASSWORD in .env and restart the API.")
+        return
+    if db.scalar(select(User.id).where(User.email == email)):
+        return
+    problem = password_problem(settings.admin_password)
+    if problem:
+        log.error("ADMIN_PASSWORD rejected: %s. The administrator was not created.", problem)
+        return
+    n = 1
+    while db.scalar(select(User.id).where(User.employee_id == f"ADM-{n:04d}")):
+        n += 1
+    admin = create_user(db, email=email, full_name=settings.admin_name.strip() or "Administrator",
+                        password=settings.admin_password, employee_id=f"ADM-{n:04d}", role=RoleName.admin,
+                        department_id=None)
+    admin.must_change_password = True
+    log.info("Administrator %s created. Sign in with ADMIN_PASSWORD and choose a new password.", email)
+
+
 def seed(db: Session) -> None:
     _seed_roles(db)
+    _seed_catalogues(db)
+    if settings.seed_demo_data:
+        _seed_demo(db)
+    else:
+        seed_general_checklist(db)
+    _seed_first_admin(db)
+    db.commit()
+
+
+def _seed_demo(db: Session) -> None:
     depts = _seed_departments(db)
     pw = settings.demo_password
 
@@ -114,17 +165,12 @@ def seed(db: Session) -> None:
         p.shift = rng.choice(list(Shift))
         p.primary_location_id = rng.choice(depts[code].locations).id
 
-    for name, days in PPE:
-        if not db.scalar(select(PPEItem).where(PPEItem.name == name)):
-            db.add(PPEItem(name=name, replacement_interval_days=days))
-    for category, title, mandatory in COURSES:
-        if not db.scalar(select(TrainingCourse).where(TrainingCourse.title == title)):
-            db.add(TrainingCourse(title=title, category=category, is_mandatory=mandatory,
-                                  description=f"{title} — demo course content."))
-    db.flush()
     seed_history(db, worker)
     seed_profiles(db)
-    db.commit()
+    seed_assessments(db, worker)
+    seed_training(db, worker)
+    seed_knowledge(db)
+    db.flush()
     log.info("Demo data ready: admin=%s supervisor=%s worker=%s", admin.email, supervisor.email, worker.email)
 
 

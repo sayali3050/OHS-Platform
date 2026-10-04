@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Bot, Building2, ClipboardList, Columns3, FilePlus2, Info, LayoutDashboard, ListChecks, LogOut, Menu, Moon, ScrollText,
+  Activity, BarChart3, BookOpen, Bot, Library, Building2, ClipboardCheck, ClipboardList, Columns3, FilePlus2, Gauge, HardHat, HeartPulse, Info, LayoutDashboard, ListChecks, LogOut, Menu, Moon, ScrollText,
   ShieldAlert, Sun, TriangleAlert, UserCog, Users, X, type LucideIcon,
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -20,26 +20,40 @@ import { api } from "@/services/api";
 import type { Role, SystemInfo } from "@/types/auth";
 import { cn, homePathFor } from "@/utils/cn";
 
-interface NavItem { to: string; label: MessageKey; icon: LucideIcon; roles: Role[] }
+type NavGroup = "home" | "report" | "safety" | "learn" | "manage" | "you";
+interface NavItem { to: string; label: MessageKey; icon: LucideIcon; roles: Role[]; group: NavGroup }
 
-// Only modules that exist are listed. Each phase adds its routes here.
+const ALL: Role[] = ["worker", "supervisor", "admin"];
+const STAFF: Role[] = ["supervisor", "admin"];
+
+// Grouped so twenty-odd destinations stay scannable on a phone. Only modules that work end to end are listed.
 const NAV: NavItem[] = [
-  { to: "/app/worker", label: "nav.mySafety", icon: LayoutDashboard, roles: ["worker"] },
-  { to: "/app/supervisor", label: "nav.overview", icon: LayoutDashboard, roles: ["supervisor"] },
-  { to: "/app/admin", label: "nav.overview", icon: LayoutDashboard, roles: ["admin"] },
-  { to: "/app/report/hazard", label: "nav.reportHazard", icon: TriangleAlert, roles: ["worker"] },
-  { to: "/app/report/incident", label: "nav.reportIncident", icon: FilePlus2, roles: ["worker"] },
-  { to: "/app/reports", label: "nav.myReports", icon: ClipboardList, roles: ["worker"] },
-  { to: "/app/reports", label: "nav.reports", icon: ClipboardList, roles: ["supervisor", "admin"] },
-  { to: "/app/board", label: "nav.board", icon: Columns3, roles: ["supervisor", "admin"] },
-  { to: "/app/actions", label: "nav.actions", icon: ListChecks, roles: ["worker", "supervisor", "admin"] },
-  { to: "/app/assistant", label: "nav.assistant", icon: Bot, roles: ["worker", "supervisor", "admin"] },
-  { to: "/app/departments", label: "nav.departments", icon: Building2, roles: ["worker", "supervisor", "admin"] },
-  { to: "/app/admin/users", label: "nav.people", icon: Users, roles: ["admin"] },
-  { to: "/app/admin/audit", label: "nav.audit", icon: ScrollText, roles: ["admin"] },
-  { to: "/app/emergency", label: "nav.emergency", icon: ShieldAlert, roles: ["worker", "supervisor", "admin"] },
-  { to: "/app/profile", label: "nav.profile", icon: UserCog, roles: ["worker", "supervisor", "admin"] },
+  { to: "/app/worker", label: "nav.mySafety", icon: LayoutDashboard, roles: ["worker"], group: "home" },
+  { to: "/app/supervisor", label: "nav.overview", icon: LayoutDashboard, roles: ["supervisor"], group: "home" },
+  { to: "/app/admin", label: "nav.overview", icon: LayoutDashboard, roles: ["admin"], group: "home" },
+  { to: "/app/report/hazard", label: "nav.reportHazard", icon: TriangleAlert, roles: ["worker"], group: "report" },
+  { to: "/app/report/incident", label: "nav.reportIncident", icon: FilePlus2, roles: ["worker"], group: "report" },
+  { to: "/app/reports", label: "nav.myReports", icon: ClipboardList, roles: ["worker"], group: "report" },
+  { to: "/app/reports", label: "nav.reports", icon: ClipboardList, roles: STAFF, group: "report" },
+  { to: "/app/board", label: "nav.board", icon: Columns3, roles: STAFF, group: "report" },
+  { to: "/app/actions", label: "nav.actions", icon: ListChecks, roles: ALL, group: "report" },
+  { to: "/app/checklists", label: "nav.checklists", icon: ClipboardCheck, roles: ALL, group: "safety" },
+  { to: "/app/risk", label: "nav.risk", icon: Gauge, roles: ALL, group: "safety" },
+  { to: "/app/ppe", label: "nav.ppe", icon: HardHat, roles: ALL, group: "safety" },
+  { to: "/app/wellbeing", label: "nav.wellbeing", icon: HeartPulse, roles: ALL, group: "safety" },
+  { to: "/app/workload", label: "nav.workload", icon: Activity, roles: STAFF, group: "safety" },
+  { to: "/app/training", label: "nav.training", icon: BookOpen, roles: ALL, group: "learn" },
+  { to: "/app/assistant", label: "nav.assistant", icon: Bot, roles: ALL, group: "learn" },
+  { to: "/app/knowledge", label: "nav.knowledge", icon: Library, roles: ALL, group: "learn" },
+  { to: "/app/analytics", label: "nav.analytics", icon: BarChart3, roles: STAFF, group: "manage" },
+  { to: "/app/departments", label: "nav.departments", icon: Building2, roles: ALL, group: "manage" },
+  { to: "/app/admin/users", label: "nav.people", icon: Users, roles: ["admin"], group: "manage" },
+  { to: "/app/admin/audit", label: "nav.audit", icon: ScrollText, roles: ["admin"], group: "manage" },
+  { to: "/app/emergency", label: "nav.emergency", icon: ShieldAlert, roles: ALL, group: "you" },
+  { to: "/app/profile", label: "nav.profile", icon: UserCog, roles: ALL, group: "you" },
 ];
+const GROUPS: NavGroup[] = ["home", "report", "safety", "learn", "manage", "you"];
+const PREFIX_MATCH = ["/app/reports", "/app/departments", "/app/training", "/app/knowledge"];
 
 /** Demo badges explain themselves on tap: what's synthetic, and how the AI is (or isn't) connected. */
 function SystemBadges({ info }: { info: SystemInfo }) {
@@ -84,17 +98,26 @@ function SystemBadges({ info }: { info: SystemInfo }) {
 function Nav({ role, onNavigate }: { role: Role; onNavigate?: () => void }) {
   const { t } = useT();
   return (
-    <nav aria-label={t("nav.main")} className="space-y-1">
-      {NAV.filter((n) => n.roles.includes(role)).map((n) => (
-        <NavLink key={n.to} to={n.to} end={n.to !== "/app/reports" && n.to !== "/app/departments"} onClick={onNavigate}
-          className={({ isActive }) => cn(
-            "flex min-h-[44px] items-center gap-3 rounded-md px-3 text-[15px] font-medium transition-colors",
-            isActive ? "bg-ink text-bg" : "text-muted hover:bg-sunken hover:text-ink",
-          )}>
-          <n.icon className="h-[18px] w-[18px]" aria-hidden />
-          {t(n.label)}
-        </NavLink>
-      ))}
+    <nav aria-label={t("nav.main")} className="space-y-4">
+      {GROUPS.map((g) => {
+        const items = NAV.filter((n) => n.group === g && n.roles.includes(role));
+        if (!items.length) return null;
+        return (
+          <div key={g} role="group" aria-labelledby={g === "home" ? undefined : `nav-${g}`} className="space-y-1">
+            {g !== "home" && <p id={`nav-${g}`} className="px-3 pb-0.5 text-xs font-bold uppercase tracking-wider text-muted">{t(`nav.g.${g}` as MessageKey)}</p>}
+            {items.map((n) => (
+              <NavLink key={n.to} to={n.to} end={!PREFIX_MATCH.includes(n.to)} onClick={onNavigate}
+                className={({ isActive }) => cn(
+                  "flex min-h-[44px] items-center gap-3 rounded-md px-3 text-[15px] font-medium transition-colors",
+                  isActive ? "bg-ink text-bg" : "text-muted hover:bg-sunken hover:text-ink",
+                )}>
+                <n.icon className="h-[18px] w-[18px]" aria-hidden />
+                {t(n.label)}
+              </NavLink>
+            ))}
+          </div>
+        );
+      })}
     </nav>
   );
 }

@@ -11,6 +11,10 @@ import type {
   WorkHistoryInput, ActionInput, ActionKind, ActionPage, ActionUpdate, AuditEntry, BoardCard, CapaAction, SearchResults,
   SupervisorDashboard,
 } from "@/types/people";
+import type {
+  AttemptResult, Certificate, KnowledgeDoc, KnowledgeDocDetail, KnowledgeHit, Checkin, CheckinInput, Checklist, ChecklistResult, Compliance, CourseCard, CourseDetail,
+  DraftQuestion, Drudgery, Ergonomics, ErgonomicsInput, PPEAssignment, PPESummary, Quiz, Risk, RiskInput, TeamWellbeing,
+} from "@/types/assess";
 
 const TOKEN_KEY = "ohs.token";
 
@@ -95,6 +99,8 @@ export const api = {
     forgotPassword: (email: string) => request<{ message: string }>("/auth/forgot-password", json("POST", { email })),
     resetPassword: (token: string, new_password: string) =>
       request<void>("/auth/reset-password", json("POST", { token, new_password })),
+    changePassword: (current_password: string, new_password: string) =>
+      request<void>("/auth/change-password", json("POST", { current_password, new_password })),
   },
   users: {
     list: (params: Params) => request<Page<User>>(`/users?${query(params)}`),
@@ -112,6 +118,8 @@ export const api = {
     assign: (id: number, investigator_id: number) =>
       request<Incident>(`/incidents/${id}/assign`, json("POST", { investigator_id })),
     activity: (id: number) => request<ActivityItem[]>(`/incidents/${id}/activity`),
+    suggestRootCause: (id: number) => request<Incident>(`/incidents/${id}/root-cause/suggest`, { method: "POST" }),
+    setRootCause: (id: number, root_cause: string) => request<Incident>(`/incidents/${id}/root-cause`, json("PUT", { root_cause })),
     board: (departmentId?: number | null) => request<BoardCard[]>(`/incidents/board?${query({ department_id: departmentId })}`),
   },
   hazards: {
@@ -162,6 +170,87 @@ export const api = {
     update: (kind: ActionKind, id: number, p: ActionUpdate) => request<CapaAction>(`/actions/${kind}/${id}`, json("PATCH", p)),
     remove: (kind: ActionKind, id: number) => request<void>(`/actions/${kind}/${id}`, { method: "DELETE" }),
   },
+  risks: {
+    list: (params: Params) => request<Risk[]>(`/risk-assessments?${query(params)}`),
+    matrix: (params: Params) => request<number[][]>(`/risk-assessments/matrix?${query(params)}`),
+    create: (p: RiskInput) => request<Risk>("/risk-assessments", json("POST", p)),
+    update: (id: number, p: RiskInput) => request<Risk>(`/risk-assessments/${id}`, json("PUT", p)),
+    remove: (id: number) => request<void>(`/risk-assessments/${id}`, { method: "DELETE" }),
+    explain: (id: number) => request<Risk>(`/risk-assessments/${id}/explain`, { method: "POST" }),
+  },
+  ergonomics: {
+    submit: (p: ErgonomicsInput) => request<Ergonomics>("/ergonomics", json("POST", p)),
+    list: (scope: "mine" | "team") => request<Ergonomics[]>(`/ergonomics?scope=${scope}`),
+  },
+  drudgery: {
+    list: () => request<Drudgery[]>("/drudgery"),
+    create: (p: { user_id: number; task_name: string; factors: Record<string, number> }) =>
+      request<Drudgery>("/drudgery", json("POST", p)),
+    remove: (id: number) => request<void>(`/drudgery/${id}`, { method: "DELETE" }),
+    weights: () => request<Record<string, number>>("/drudgery/weights"),
+  },
+  wellbeing: {
+    today: (p: CheckinInput) => request<Checkin>("/wellbeing/today", json("PUT", p)),
+    mine: () => request<Checkin[]>("/wellbeing/mine"),
+    team: () => request<TeamWellbeing>("/wellbeing/team"),
+  },
+  training: {
+    courses: () => request<CourseCard[]>("/training/courses"),
+    course: (id: number) => request<CourseDetail>(`/training/courses/${id}`),
+    read: (id: number) => request<CourseCard>(`/training/courses/${id}/read`, { method: "POST" }),
+    attempt: (quizId: number, answers: number[]) =>
+      request<AttemptResult>(`/training/quizzes/${quizId}/attempt`, json("POST", { answers })),
+    certificate: (courseId: number, userId?: number) =>
+      request<Certificate>(`/training/courses/${courseId}/certificate?${query({ user_id: userId })}`),
+    compliance: () => request<Compliance>("/training/compliance"),
+    generate: (p: { course_id: number; topic: string | null; count: number; language: Language }) =>
+      request<{ demo_mode: boolean; questions: DraftQuestion[] }>("/training/quizzes/generate", json("POST", p)),
+    saveQuiz: (p: { course_id: number; title: string; topic: string; ai_generated: boolean; questions: DraftQuestion[] }) =>
+      request<Quiz>("/training/quizzes", json("POST", p)),
+  },
+  ppe: {
+    items: () => request<{ id: number; name: string; replacement_interval_days: number }[]>("/ppe/items"),
+    assignments: (params: Params = {}) => request<PPEAssignment[]>(`/ppe/assignments?${query(params)}`),
+    issue: (user_id: number, ppe_item_id: number) => request<PPEAssignment>("/ppe/issue", json("POST", { user_id, ppe_item_id })),
+    inspect: (id: number, inspection_status: "ok" | "damaged" | "missing") =>
+      request<PPEAssignment>(`/ppe/assignments/${id}/inspect`, json("POST", { inspection_status })),
+    report: (id: number, problem: "damaged" | "missing") =>
+      request<PPEAssignment>(`/ppe/assignments/${id}/report`, json("POST", { problem })),
+    summary: () => request<PPESummary[]>("/ppe/summary"),
+    workers: () => request<{ id: number; full_name: string; department: string | null }[]>("/ppe/workers"),
+  },
+  checklists: {
+    list: (includeInactive = false) => request<Checklist[]>(`/checklists?${query({ include_inactive: includeInactive || undefined })}`),
+    create: (p: { title: string; frequency: "daily" | "weekly"; items: { text: string }[]; department_id?: number | null }) =>
+      request<Checklist>("/checklists", json("POST", p)),
+    update: (id: number, p: { title: string; frequency: "daily" | "weekly"; items: { text: string }[]; is_active: boolean }) =>
+      request<Checklist>(`/checklists/${id}`, json("PUT", p)),
+    complete: (id: number, p: { location_id: number | null; answers: { item_id: number; answer: "yes" | "no" | "na"; note: string | null }[] }) =>
+      request<ChecklistResult>(`/checklists/${id}/results`, json("POST", p)),
+    results: (params: Params = {}) => request<ChecklistResult[]>(`/checklists/results?${query(params)}`),
+  },
+  analytics: {
+    trends: () => request<{ kind: "category" | "department" | "location"; key: string; label: string; current: number; previous: number;
+      change_pct: number | null; severity_weight: number }[]>("/analytics/trends"),
+    heatmap: () => request<{ department: { id: number; name: string }; locations: { id: number; name: string; x: number; y: number;
+      incidents: number; hazards: number; weight: number }[] }[]>("/analytics/heatmap"),
+    monthly: (month: string) => request<Record<string, unknown>>(`/analytics/monthly?month=${month}`),
+    copilot: (question: string) => request<{ answer: string; intent: string | null; facts: { label: string; value: string | number }[];
+      sources: string[]; demo_mode: boolean }>("/analytics/copilot", json("POST", { question })),
+  },
+  knowledge: {
+    list: () => request<KnowledgeDoc[]>("/knowledge"),
+    get: (id: number) => request<KnowledgeDocDetail>(`/knowledge/${id}`),
+    search: (q: string) => request<KnowledgeHit[]>(`/knowledge/search?${query({ q })}`),
+    upload: (file: File, title: string, doc_type: string) => {
+      const form = new FormData();
+      form.append("file", file, file.name);
+      form.append("title", title);
+      form.append("doc_type", doc_type);
+      return request<KnowledgeDoc>("/knowledge", { method: "POST", body: form });
+    },
+    remove: (id: number) => request<void>(`/knowledge/${id}`, { method: "DELETE" }),
+  },
   search: (q: string) => request<SearchResults>(`/search?${query({ q })}`),
   audit: {
     list: (params: Params) => request<Page<AuditEntry>>(`/audit?${query(params)}`),
@@ -170,6 +259,8 @@ export const api = {
   people: {
     me: () => request<Profile>("/people/me"),
     get: (id: number) => request<Profile>(`/people/${id}`),
+    resetPassword: (id: number) =>
+      request<{ temporary_password: string }>(`/people/${id}/reset-password`, { method: "POST" }),
     update: (id: number, p: ProfileUpdate) => request<Profile>(`/people/${id}`, json("PATCH", p)),
     list: (params: Params) => request<Page<PersonSummary>>(`/people?${query(params)}`),
     create: (p: PersonInput) => request<Profile>("/people", json("POST", p)),

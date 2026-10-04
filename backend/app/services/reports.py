@@ -112,6 +112,8 @@ def incident_out(i: Incident, viewer: User | None = None) -> IncidentOut:
         people_involved=i.people_involved, investigator=_person(i.investigator),
         attachments=[AttachmentOut.model_validate(a) for a in i.attachments],
         can_manage=bool(viewer and can_manage(i, viewer)), allowed_transitions=allowed_next(i, viewer) if viewer else [],
+        root_cause=i.root_cause,
+        root_cause_suggestion=(i.ai_analysis or {}).get("root_cause") if viewer and can_manage(i, viewer) else None,
     )
 
 

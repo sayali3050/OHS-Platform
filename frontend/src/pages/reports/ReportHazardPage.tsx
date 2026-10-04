@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, Cable, CircleHelp, Cog, DoorClosed, Droplets, EyeOff, Flame, FlaskConical, HardHat, Lightbulb,
   PersonStanding, Volume2, Weight, type LucideIcon,
@@ -36,7 +36,9 @@ export default function ReportHazardPage() {
     category: null as HazardCategory | null, description: "", severity: null as Severity | null,
     location_id: null as number | null, is_anonymous: false,
   });
-  const [f, setF] = useState(blank);
+  const [params] = useSearchParams();
+  // A checklist "No" opens this form with what was found already filled in.
+  const [f, setF] = useState(() => ({ ...blank(), description: params.get("description")?.slice(0, 5000) ?? "" }));
   const [photos, setPhotos] = useState<File[]>([]);
   const [voice, setVoice] = useState<Blob | null>(null);
   const [errors, setErrors] = useState<Errors>({});

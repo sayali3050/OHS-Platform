@@ -15,9 +15,11 @@
     --signal: 43 100% 47%;      /* hi-vis amber #f0b000 — primary action only */
     --signal-ink: 212 24% 12%;
     --safe: 150 62% 30%;
-    --caution: 32 95% 42%;
+    --caution: 32 95% 32%;      /* dark enough for caution text on light tints (>= 4.5:1) */
     --danger: 6 72% 45%;
     --info: 208 70% 40%;
+    --danger-solid: 6 72% 45%;   /* filled red behind white text */
+    --safe-solid: 150 62% 28%;   /* filled green behind white text */
     --shadow: 212 30% 20%;
     /* Chart series (validated for colour-blind separation and contrast on this surface). */
     --series-1: #2a78d6;
@@ -36,8 +38,10 @@
     --signal-ink: 212 24% 10%;
     --safe: 150 50% 48%;
     --caution: 36 95% 55%;
-    --danger: 6 80% 62%;
+    --danger: 6 80% 66%;         /* lighter so red text on dark surfaces passes 4.5:1 */
     --info: 208 80% 64%;
+    --danger-solid: 6 70% 44%;
+    --safe-solid: 150 60% 28%;
     --shadow: 0 0% 0%;
     --series-1: #3987e5;
     --series-2: #d95926;

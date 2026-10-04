@@ -10,7 +10,7 @@ const SEVERITY_TONE = { low: "info", medium: "caution", high: "danger" } as cons
 export function SeverityBadge({ severity }: { severity: Severity }) {
   const { t } = useT();
   if (severity === "critical") {
-    return <span className="inline-flex items-center rounded-sm bg-danger px-2 py-0.5 text-[13px] font-bold text-white">{t("severity.critical")}</span>;
+    return <span className="inline-flex items-center rounded-sm bg-danger-solid px-2 py-0.5 text-[13px] font-bold text-white">{t("severity.critical")}</span>;
   }
   return <Badge tone={SEVERITY_TONE[severity]}>{t(severityKey(severity))}</Badge>;
 }

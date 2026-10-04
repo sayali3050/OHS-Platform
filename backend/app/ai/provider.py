@@ -21,6 +21,8 @@ class LLMProvider(Protocol):
 
     def chat(self, system: str, messages: list[dict[str, str]]) -> str: ...
 
+    def embed(self, texts: list[str]) -> list[list[float]]: ...
+
 
 @lru_cache
 def get_provider() -> LLMProvider | None:

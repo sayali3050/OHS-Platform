@@ -74,8 +74,8 @@ function AddAction({ report, onAdded, onCancel }: {
 }
 
 /** Corrective and preventive actions on a report. Managers add them; owners complete them. */
-export function ActionsPanel({ report, canManage, closed }: {
-  report: { kind: "incident" | "hazard"; id: number }; canManage: boolean; closed: boolean;
+export function ActionsPanel({ report, canManage, closed, version = 0 }: {
+  report: { kind: "incident" | "hazard"; id: number }; canManage: boolean; closed: boolean; version?: number;
 }) {
   const { t } = useT();
   const [items, setItems] = useState<CapaAction[] | null>(null);
@@ -84,7 +84,7 @@ export function ActionsPanel({ report, canManage, closed }: {
   useEffect(() => {
     api.actions.list({ [key]: report.id, scope: "team", state: "all", page_size: 100 })
       .then((p) => setItems(p.items)).catch(() => setItems([]));
-  }, [key, report.id]);
+  }, [key, report.id, version]);
 
   const replace = (a: CapaAction) => setItems((l) => l?.map((x) => (x.id === a.id && x.kind === a.kind ? a : x)) ?? null);
   const open = items?.filter((a) => a.state !== "completed").length ?? 0;

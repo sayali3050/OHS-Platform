@@ -26,7 +26,8 @@ const PPE_TONE = { ok: "safe", due_soon: "caution", overdue: "danger", damaged: 
 const TRAINING_TONE = { valid: "safe", expiring: "caution", expired: "danger", in_progress: "info", not_started: "neutral" } as const;
 
 /** The server sends English explanations; rebuild them from the same lists so they read in the user's language. */
-function explain(t: T, data: Data, key: "ppe" | "training") {
+function explain(t: T, data: Data, key: "ppe" | "training" | "checklists") {
+  if (key === "checklists") return t("dash.checklistsSome", { done: data.checklists.done_days, days: data.checklists.days });
   if (key === "ppe") {
     const bad = data.ppe.filter((p) => !p.compliant);
     if (!bad.length) return t("dash.ppeAllOk", { count: data.ppe.length });
@@ -64,7 +65,7 @@ function QuickActions() {
   const actions: { to: string; title: MessageKey; sub: MessageKey; Icon: typeof TriangleAlert; tone: string }[] = [
     { to: "/app/report/hazard", title: "dash.qHazard", sub: "dash.qHazardSub", Icon: TriangleAlert, tone: "bg-signal text-signal-ink hover:bg-signal/90" },
     { to: "/app/report/incident", title: "dash.qIncident", sub: "dash.qIncidentSub", Icon: FilePlus2, tone: "bg-ink text-bg hover:bg-ink/90" },
-    { to: "/app/emergency", title: "dash.qEmergency", sub: "dash.qEmergencySub", Icon: ShieldAlert, tone: "bg-danger text-white hover:bg-danger/90" },
+    { to: "/app/emergency", title: "dash.qEmergency", sub: "dash.qEmergencySub", Icon: ShieldAlert, tone: "bg-danger-solid text-white hover:bg-danger-solid/90" },
     { to: "/app/assistant", title: "dash.qAssistant", sub: "dash.qAssistantSub", Icon: Bot, tone: "border border-line bg-surface hover:bg-sunken" },
   ];
   return (
@@ -72,7 +73,7 @@ function QuickActions() {
       {actions.map(({ to, title, sub, Icon, tone }) => (
         <Link key={to} to={to} className={cn(base, tone)}>
           <Icon className="h-7 w-7 shrink-0" aria-hidden />
-          <span><span className="block text-lg leading-tight">{t(title)}</span><span className="block text-sm font-medium opacity-80">{t(sub)}</span></span>
+          <span><span className="block text-lg leading-tight">{t(title)}</span><span className="block text-sm font-medium">{t(sub)}</span></span>
         </Link>
       ))}
     </nav>
@@ -111,7 +112,7 @@ export default function WorkerDashboard() {
                 <div className="w-full space-y-4">
                   <Badge tone={BAND[data.band!].tone}>{t(`dash.band.${data.band!}` as MessageKey)}</Badge>
                   {data.components.map((c) => {
-                    const label = t(c.key === "ppe" ? "dash.ppeLabel" : "dash.trainingLabel");
+                    const label = t(c.key === "ppe" ? "dash.ppeLabel" : c.key === "training" ? "dash.trainingLabel" : "dash.checklistsLabel");
                     return (
                       <div key={c.key}>
                         <div className="flex items-baseline justify-between gap-2">

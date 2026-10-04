@@ -25,6 +25,13 @@ export interface Incident extends IncidentSummary {
   description: string; original_language: Language; original_description: string | null;
   injury_details: string | null; people_involved: string | null; investigator: PersonRef | null;
   attachments: AttachmentRef[]; can_manage: boolean; allowed_transitions: IncidentStatus[];
+  root_cause: string | null; root_cause_suggestion: RootCauseSuggestion | null;
+}
+
+export interface RootCauseSuggestion {
+  whys: { question: string; answer: string }[]; root_cause: string; contributing_factors: string[];
+  suggested_actions: { description: string; control_level: string }[]; confidence: "low" | "medium" | "high";
+  demo_mode: boolean; at: string;
 }
 
 export interface HazardSummary {
@@ -45,6 +52,7 @@ export interface ActivityItem {
 export interface AIMessage {
   id: number; role: "user" | "assistant"; content: string;
   classification: "emergency" | "medical_concern" | "safety_guidance" | null; demo_mode: boolean; created_at: string;
+  sources?: { document_id: number; title: string; heading: string | null; chunk_id: number; snippet: string }[] | null;
 }
 export interface AIConversationSummary { id: number; title: string; updated_at: string }
 export interface AIConversation extends AIConversationSummary { messages: AIMessage[] }
@@ -86,7 +94,8 @@ export interface WorkerDashboard {
   score: number | null;
   band: "good" | "fair" | "needs_attention" | null;
   method: string;
-  components: { key: "ppe" | "training"; label: string; score: number; weight: number; explanation: string }[];
+  components: { key: "ppe" | "training" | "checklists"; label: string; score: number; weight: number; explanation: string }[];
+  checklists: { done_days: number; days: number };
   ppe: { name: string; issued_on: string; replace_by: string; status: "ok" | "due_soon" | "overdue" | "damaged" | "missing"; compliant: boolean }[];
   training: { course_id: number; title: string; category: string; mandatory: boolean;
     status: "valid" | "expiring" | "expired" | "in_progress" | "not_started"; completion_pct: number;

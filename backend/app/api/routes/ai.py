@@ -33,6 +33,7 @@ class MessageOut(BaseModel):
     content: str
     classification: str | None
     demo_mode: bool
+    sources: list[dict] | None = None  # company-document passages the answer is based on
     created_at: datetime
 
 

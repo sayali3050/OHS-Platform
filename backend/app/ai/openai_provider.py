@@ -30,6 +30,15 @@ class OpenAIProvider:
             raise AIError("Model refused or returned no structured output")
         return schema.model_validate(parsed.model_dump())
 
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        """Vectors for knowledge-base search (small model: cheap, and plenty for SOP passages)."""
+        try:
+            r = self.client.embeddings.create(model="text-embedding-3-small", input=[t[:8000] for t in texts])
+        except OpenAIError as e:
+            log.warning("Embedding call failed: %s", e)
+            raise AIError(str(e)) from e
+        return [d.embedding for d in r.data]
+
     def chat(self, system: str, messages: list[dict[str, str]]) -> str:
         try:
             r = self.client.chat.completions.create(

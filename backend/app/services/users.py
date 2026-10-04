@@ -10,6 +10,15 @@ class DuplicateUserError(ValueError):
     pass
 
 
+def password_problem(pw: str) -> str | None:
+    """The one password rule, shared by registration, resets, changes and the first admin."""
+    if len(pw) < 8:
+        return "Password must be at least 8 characters"
+    if not any(c.isdigit() for c in pw) or not any(c.isalpha() for c in pw):
+        return "Password must contain at least one letter and one number"
+    return None
+
+
 def get_role(db: Session, name: RoleName) -> Role:
     role = db.scalar(select(Role).where(Role.name == name))
     if role is None:

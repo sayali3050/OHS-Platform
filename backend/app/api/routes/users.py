@@ -42,6 +42,7 @@ def create(body: AdminUserCreate, request: Request, db: Session = Depends(get_db
            admin: User = Depends(require_admin)):
     try:
         user = create_user(db, **body.model_dump())
+        user.must_change_password = True  # chosen by the admin; the person picks their own at first sign-in
     except DuplicateUserError as e:
         raise HTTPException(status.HTTP_409_CONFLICT, str(e))
     except ValueError as e:

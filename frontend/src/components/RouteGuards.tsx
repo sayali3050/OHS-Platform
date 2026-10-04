@@ -10,6 +10,10 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   const loc = useLocation();
   if (loading) return <div className="p-8"><Skeleton className="h-8 w-48" /><Skeleton className="mt-4 h-40 w-full" /></div>;
   if (!user) return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
+  // A temporary password must be replaced first; emergency mode always stays reachable (the API allows it too).
+  if (user.must_change_password && loc.pathname !== "/change-password" && !loc.pathname.startsWith("/app/emergency")) {
+    return <Navigate to="/change-password" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -24,5 +28,6 @@ export function RequireRole({ roles, children }: { roles: Role[]; children: Reac
 export function RedirectIfAuthed({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return null;
-  return user ? <Navigate to={homePathFor(user.role)} replace /> : <>{children}</>;
+  if (user) return <Navigate to={user.must_change_password ? "/change-password" : homePathFor(user.role)} replace />;
+  return <>{children}</>;
 }

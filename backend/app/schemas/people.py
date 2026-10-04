@@ -179,3 +179,7 @@ class PersonRecords(BaseModel):
     ppe: list[PPEStatus]
     training: list[TrainingStatus]
     emergencies_raised: int
+
+
+class TemporaryPassword(BaseModel):
+    temporary_password: str

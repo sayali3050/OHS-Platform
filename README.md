@@ -4,7 +4,11 @@ Final-year engineering project: **Occupational Health and Safety: Reducing Drudg
 
 SafeOps lets workers report hazards and incidents from their phones in their own language, helps supervisors investigate and close them, and gives administrators a clear picture of risk, compliance and physical workload (drudgery) across the organisation. AI assists with structuring reports, classifying hazards and suggesting controls. It never replaces human judgement, and every AI output is labelled as a suggestion.
 
-> **Build status: Phase 3 of 10 complete** (foundation; worker reporting; supervisor & admin workflow with corrective actions, incident board, KPIs, search and audit log). See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full plan and what each phase delivers.
+> **Build status: all 10 phases complete.** Reporting, workflow and CAPA, AI assistance, risk and drudgery, training/PPE/checklists, analytics, company knowledge base, security hardening and documentation.
+>
+> - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): design and phase plan
+> - [docs/PROJECT_REPORT.md](docs/PROJECT_REPORT.md): diagrams, test cases and results for the written report
+> - [docs/DEMO.md](docs/DEMO.md): a 15-minute demo script
 
 ## Problem statement
 
@@ -26,7 +30,7 @@ Many workplaces still track safety on paper or spreadsheets. Workers who are unc
 | Backend | Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2, Alembic |
 | Database | PostgreSQL 16 |
 | Auth | JWT (PyJWT), bcrypt, role-based access control |
-| AI | OpenAI API behind a provider abstraction, with an offline Demo AI Mode |
+| AI | OpenAI API (chat + embeddings) behind a provider abstraction, with an offline Demo AI Mode; company-document search (BM25 + vectors) in PostgreSQL |
 | Infra | Docker, Docker Compose, nginx |
 
 ## Quick start (Docker)
@@ -52,8 +56,8 @@ docker compose up --build -d          # rebuilds both images; your database and 
 The seed only adds demo history to empty tables, so restarts never duplicate data. To start again from a clean
 demo, run `docker compose down -v` first. **This deletes the database and all uploaded photos.**
 
-If you also run the backend outside Docker, reinstall its packages once, because Phase 2 adds Pillow for photo
-processing:
+If you also run the backend outside Docker, reinstall its packages after updating (Phase 2 added Pillow for photos,
+Phase 8 added pypdf for company documents):
 
 ```bash
 cd backend
@@ -94,7 +98,25 @@ All seeded accounts use the password set in `DEMO_PASSWORD` (default **`Demo@123
 
 The seed also creates 33 more workers (`worker02@demo.com` … `worker34@demo.com`), one supervisor per department, 6 departments with 16 locations, 8 PPE types and 8 training courses. Phase 2 adds six months of history: 24 incidents, 26 hazards (3 anonymous), 19 corrective actions, PPE issued to every worker and training records. **All seeded data is synthetic** and the app shows a "Demo data" badge while it's present.
 
-The demo worker's dashboard tells a deliberate story: safety score **90**, made up of PPE 80% (their gloves are 12 days past replacement) and mandatory training 100%.
+The demo worker's dashboard tells a deliberate story: safety score **93**, the equal average of PPE 80% (their gloves are 12 days past replacement), mandatory training 100% and daily checklists 100%.
+
+## Using SafeOps for real (your own site)
+
+The demo accounts share a published password, so a real site runs without them:
+
+1. In `.env` set `SEED_DEMO_DATA=false`, a strong `JWT_SECRET_KEY`, and the first administrator:
+   `ADMIN_EMAIL=you@yourcompany.com`, `ADMIN_PASSWORD=<a temporary password>`, `ADMIN_NAME=<your name>`.
+   Set `APP_URL` to the address people will open (for example `http://192.168.0.100:8080`).
+2. Start from an empty database: `docker compose down -v && docker compose up --build -d`. **This deletes the demo data.**
+3. Sign in as the administrator. You're asked to choose your own password first.
+4. Add your **departments** (menu → **Departments**), then optionally your site emergency numbers and SOPs.
+5. People join in one of two ways:
+   - **They register themselves** at *Create an account*. Workers can sign in straight away; supervisor accounts wait for an admin to approve them in *People & access*.
+   - **An admin or supervisor adds them** (Profile → **My workers** for supervisors, **Supervisors & workers** for admins). The password you choose is temporary: they must pick their own at first sign-in.
+6. **Forgotten passwords**: with a mail server (`SMTP_*` settings) people get a reset link by email. Without one, or for people without email, a supervisor or admin opens their profile and presses **Reset password** to get a one-time temporary password.
+
+Every password field has an eye button to show what you typed. Someone with a temporary password can't open anything else until they change it, except **emergency mode**, which is never blocked.
+With `ENVIRONMENT=production` the API refuses to start if demo data is switched on or the JWT secret is weak.
 
 ## Environment variables
 
@@ -111,15 +133,21 @@ See [`.env.example`](.env.example). The important ones:
 | `PUBLIC_EMERGENCY_NUMBERS` | National numbers shown to everyone, as `service:number` pairs. Defaults to India's 112, police 100, fire 101, ambulance 108. |
 | `MAX_UPLOAD_MB` | Per-photo limit (default 10). Up to 3 photos per report. |
 | `MAX_VOICE_MB` | Voice-note limit (default 8, about 5 minutes). One voice note per report. |
+| `DRUDGERY_WEIGHTS` | Optional JSON of factor weights, e.g. `{"load":0.3}`. Factors you don't name keep their defaults. |
+| `ENVIRONMENT` | `production` or `staging` makes the API refuse to start with a default or short `JWT_SECRET_KEY`, or with demo data on. |
+| `SEED_DEMO_DATA` | `true` (default) seeds the demo organisation; `false` for a real site (see above). |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME` | First administrator on a real site, created once; must change the password at first sign-in. |
+| `APP_URL` | Public address used in password-reset links. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Optional mail server for reset emails. Without it the link goes to the API log. |
 
 ## Tests
 
 ```bash
-cd backend && python -m pytest -q     # 109 tests: auth, RBAC, reporting, anonymity, uploads and voice notes, language detection, alarm and roll call, profiles, departments, admin overview
-cd frontend && npm test               # 18 tests: route guards, form validation, anonymous reporting, alarm and siren, voice recorder, profile permissions, CAPA, board, search
+cd backend && python -m pytest -q     # 277 tests: auth, RBAC, temporary passwords, every route needs sign-in, reporting, uploads, alarm, CAPA, scoring, training, analytics, knowledge base, AI validation
+cd frontend && npm test               # 28 tests: guards, forms, password show/hide, alarm and siren, voice recorder, CAPA, board, translation parity, CSP hash, axe accessibility
 ```
 
-Backend tests run against SQLite for speed using the same models; the migrations themselves have been verified on PostgreSQL 16 (upgrade, full downgrade, upgrade). Phase 2 was also checked end to end on PostgreSQL through nginx.
+Backend tests run against SQLite for speed using the same models; all five migrations have been verified on PostgreSQL 16 (upgrade, full downgrade, upgrade), and every phase was checked end to end on PostgreSQL through nginx. Lighthouse accessibility scores 100 on every screen, in light and dark theme. Test cases and results are tabulated in [docs/PROJECT_REPORT.md](docs/PROJECT_REPORT.md#12-testing).
 
 For manual testing, [`api-tests.http`](api-tests.http) has ready-made requests for every Phase 2 endpoint, including security checks. It runs with the VS Code **REST Client** extension. You can also use the Swagger page at http://localhost:8000/api/docs.
 
@@ -133,11 +161,11 @@ ohs-platform/
 │   │   ├── auth/            # password hashing, JWT, role guards
 │   │   ├── core/            # settings
 │   │   ├── database/        # engine, session, declarative base
-│   │   ├── models/          # 30 SQLAlchemy tables
+│   │   ├── models/          # 35 SQLAlchemy tables
 │   │   ├── schemas/         # Pydantic request/response models
 │   │   ├── services/        # business logic, audit logging
-│   │   ├── ai/              # AI layer (Phase 4)
-│   │   ├── utils/           # rate limiting
+│   │   ├── ai/              # provider, prompts, schemas, guardrails, demo mode
+│   │   ├── utils/           # rate limiting, language detection
 │   │   ├── seed.py          # idempotent demo data
 │   │   └── main.py
 │   ├── alembic/             # migrations
@@ -146,7 +174,7 @@ ohs-platform/
 │   ├── components/          # ui/ design-system primitives, guards, dialogs
 │   ├── layouts/  pages/  hooks/  services/  types/  utils/
 ├── docker/                  # Dockerfiles, nginx config
-├── docs/ARCHITECTURE.md     # architecture, data model, AI design, phase plan
+├── docs/                    # ARCHITECTURE, PROJECT_REPORT, DEMO, screenshots/
 ├── docker-compose.yml
 └── .env.example
 ```
@@ -198,10 +226,56 @@ ohs-platform/
 - **Global search** (header, or Ctrl+K): reports, people and departments, always within what you're allowed to see.
 - **Audit log viewer** for admins: every sign-in, report and change, filterable by person, action and date.
 
+## What Phase 4 (AI services) adds
+
+- **5 Whys root-cause suggestions** on incidents, with contributing factors and actions ranked by the hierarchy of controls. Each action can be added with one click; the investigator records the cause in their own words.
+- **Risk explanations, quiz drafts and the monthly summary** written by AI from figures the code computed. Every response is validated against a schema, and invalid output falls back safely.
+- **Embeddings** (`text-embedding-3-small`) for company-document search when a key is set; Demo AI Mode covers all of it offline.
+
+## What Phase 5 (Risk & drudgery) adds
+
+- **Risk register**: 5×5 likelihood × severity, scored by the server (low / moderate / high / critical), with existing and recommended controls (hierarchy of controls), assessor and review date.
+- **Ergonomics questionnaire** (load, lifts, postures, vibration, hours, discomfort) with a points-based score and practical recommendations. High discomfort always suggests a first aider first.
+- **Drudgery assessment** of tasks on seven weighted factors (0–100), with interventions for the worst factors.
+- **Daily wellbeing check-in** (sleep, fatigue, pain, stress); several high-fatigue days in a row flag a worker on the supervisor's **Workload & fatigue** screen.
+
+## What Phase 6 (Training, PPE, checklists) adds
+
+- **8 courses** with lessons and quizzes marked on the server (answers never reach the browser), mandatory courses, printable certificates, and AI quiz drafts that staff review before saving.
+- **PPE**: what each worker has, inspections, replacement dates and overdue items; workers report damaged kit, supervisors issue and replace.
+- **Daily checklists** with "not OK" notes on any item.
+- The worker's **safety score** combines PPE, training and checklists equally and explains itself.
+
+## What Phase 7 (Analytics & reports) adds
+
+- **Insights**: monthly trends, a rising-category signal and a location heatmap with numbers in every cell.
+- **Ask the data**: a copilot that answers questions like "Which actions are overdue?" from real queries and lists its sources.
+- **Monthly report** that prints to PDF, and **CSV exports** (incidents, hazards, actions, risks) protected against spreadsheet formula injection.
+
+## What Phase 8 (Knowledge base) adds
+
+- Admins upload **company SOPs and policies** (PDF, text or Markdown). They are split into sections and searched with BM25, plus vectors when live AI is on.
+- **SafeAssist answers cite the document section** they used, with a link to it. If no document covers the question, the answer says so before giving general guidance.
+
+## What Phase 9 (Hardening) adds
+
+- A test calls **all 118 protected endpoints without a token** and expects 401; the API refuses to start in production with a weak secret.
+- **Strict Content-Security-Policy** and security headers from nginx; the inline theme script is allowed only by its SHA-256 hash (checked by a test).
+- **Accessibility**: axe tests and Lighthouse 100 on every screen; contrast tokens for both themes.
+- **Performance**: non-English dictionaries load on demand and vendor code is split, cutting the main bundle from 748 KB to 200 KB.
+
 ## Screenshots
 
-_Add screenshots to `docs/screenshots/` as phases are completed._
+More screens are in [`docs/screenshots/`](docs/screenshots/); [docs/DEMO.md](docs/DEMO.md) walks through them in order.
+
+| Worker dashboard | Site-wide alarm (phone) | Hindi (phone) |
+|---|---|---|
+| ![Worker dashboard](docs/screenshots/01-worker-dashboard.png) | ![Emergency alarm](docs/screenshots/09-emergency-alarm-phone.png) | ![Hindi dashboard](docs/screenshots/10-worker-dashboard-hindi-phone.png) |
+| **Root cause and CAPA** | **Analytics heatmap** | **SafeAssist with citation** |
+| ![Root cause](docs/screenshots/14-incident-root-cause-actions.png) | ![Heatmap](docs/screenshots/19-analytics-heatmap.png) | ![SafeAssist](docs/screenshots/07-safeassist-citation.png) |
+| **Admin overview** | **Roll call** | **Workload & fatigue** |
+| ![Admin overview](docs/screenshots/18-admin-overview.png) | ![Roll call](docs/screenshots/11-roll-call.png) | ![Workload](docs/screenshots/16-workload-fatigue.png) |
 
 ## Future enhancements
 
-See phases 2–10 in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#7-implementation-plan). Beyond the current scope: offline-first PWA for areas with poor connectivity, IoT sensor ingestion (noise, gas, temperature), SSO, and an email/SMS gateway for notifications.
+See [limitations and future work](docs/PROJECT_REPORT.md#14-limitations-and-future-work). In short: web push so the alarm reaches phones with the app closed, an offline-first PWA for poor connectivity, IoT sensor input (noise, gas, temperature), SSO, and SMS/WhatsApp alerts.

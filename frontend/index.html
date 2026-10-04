@@ -9,10 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet" />
     <title>SafeOps — Occupational Health & Safety</title>
-    <script>
-      // Apply saved theme before paint to avoid a flash.
-      try { const t = localStorage.getItem("theme"); if (t === "dark" || (!t && matchMedia("(prefers-color-scheme: dark)").matches)) document.documentElement.classList.add("dark"); } catch {}
-    </script>
+    <!-- Apply the saved theme before first paint (no flash). One line, so its CSP hash is the same on every OS. -->
+    <script>try { const t = localStorage.getItem("theme"); if (t === "dark" || (!t && matchMedia("(prefers-color-scheme: dark)").matches)) document.documentElement.classList.add("dark"); } catch {}</script>
   </head>
   <body>
     <div id="root"></div>

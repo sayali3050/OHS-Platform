@@ -85,14 +85,14 @@ export function SirenButton({ className }: { className?: string }) {
         onKeyUp={(e) => { if (e.key === " " || e.key === "Enter") release(); }}
         onContextMenu={(e) => e.preventDefault()}
         aria-describedby="siren-help" disabled={state === "sending"}
-        className="relative flex min-h-[88px] w-full touch-none select-none items-center justify-center gap-3 overflow-hidden rounded-lg bg-danger px-5 text-white shadow-panel transition-transform active:scale-[0.99] disabled:opacity-80">
+        className="relative flex min-h-[88px] w-full touch-none select-none items-center justify-center gap-3 overflow-hidden rounded-lg bg-danger-solid px-5 text-white shadow-panel transition-transform active:scale-[0.99] disabled:opacity-80">
         <span aria-hidden className="absolute inset-y-0 left-0 bg-black/25" style={{ width: `${progress * 100}%` }} />
         <Siren className={cn("relative h-9 w-9 shrink-0", state === "holding" && "animate-pulse motion-reduce:animate-none")} aria-hidden />
         <span className="relative text-left">
           <span className="block font-display text-2xl font-bold uppercase tracking-wide">
             {state === "sending" ? t("siren.sending") : t("siren.button")}
           </span>
-          <span className="block text-[15px] font-medium text-white/90">{state === "holding" ? t("siren.holding") : t("siren.hold")}</span>
+          <span className="block text-[15px] font-medium text-white">{state === "holding" ? t("siren.holding") : t("siren.hold")}</span>
         </span>
       </button>
       <p id="siren-help" className="mt-2 text-sm text-muted">{t("siren.desc")}</p>

@@ -1,15 +1,18 @@
 """Profiles and the people each role manages: admins add supervisors (and workers), supervisors add workers."""
+import secrets
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.auth.deps import get_current_user, require_staff
+from app.auth.security import hash_password
 from app.database.session import get_db
 from app.models import Department, EmergencyEvent, Hazard, HealthCheck, Incident, Role, User, WorkHistory
 from app.models.enums import RoleName
 from app.schemas.people import (
     HealthCheckIn, HealthCheckOut, PersonCreate, PersonPage, PersonRecords, PersonSummary, ProfileOut, ProfileUpdate,
-    WorkHistoryIn, WorkHistoryOut,
+    TemporaryPassword, WorkHistoryIn, WorkHistoryOut,
 )
 from app.services import audit, people, reports
 from app.services.users import DuplicateUserError, create_user
@@ -88,6 +91,7 @@ def add_person(body: PersonCreate, request: Request, viewer: User = Depends(requ
         raise field_error("department_id", str(e))
     user.designation = body.designation
     user.date_of_joining = body.date_of_joining
+    user.must_change_password = True  # the manager chose it; the person picks their own at first sign-in
     if user.worker_profile is not None:
         if body.shift:
             user.worker_profile.shift = body.shift
@@ -250,3 +254,29 @@ def records(user_id: int, viewer: User = Depends(get_current_user), db: Session 
         ppe=ppe, training=training,
         emergencies_raised=db.scalar(select(func.count(EmergencyEvent.id)).where(EmergencyEvent.user_id == target.id)),
     )
+
+
+_TEMP_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"  # no 0/o, 1/l/i: easy to read out or copy from a screen
+
+
+def _temporary_password() -> str:
+    while True:
+        pw = "".join(secrets.choice(_TEMP_ALPHABET) for _ in range(10))
+        if any(c.isdigit() for c in pw) and any(c.isalpha() for c in pw):
+            return f"{pw[:5]}-{pw[5:]}"
+
+
+@router.post("/{user_id}/reset-password", response_model=TemporaryPassword,
+             summary="Give someone you manage a temporary password (for people without email). Shown once.")
+def reset_password(user_id: int, request: Request, viewer: User = Depends(require_staff),
+                   db: Session = Depends(get_db)):
+    target = _managed(db, user_id, viewer)
+    if target.id == viewer.id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Use Change password on your own profile instead.")
+    temp = _temporary_password()
+    target.password_hash = hash_password(temp)
+    target.must_change_password = True
+    audit.record(db, "person.password_reset", user_id=viewer.id, entity_type="user", entity_id=target.id,
+                 request=request)
+    db.commit()
+    return TemporaryPassword(temporary_password=temp)

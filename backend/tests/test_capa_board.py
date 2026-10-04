@@ -140,3 +140,42 @@ def test_supervisor_kpis(client, supervisor_h, worker_h):
     assert d["scope"] == "department" and set(d["incidents_by_status"]) >= {"reported", "closed"}
     assert d["avg_days_to_close"] is not None and d["actions_overdue"] >= 0
     assert client.get("/api/dashboard/supervisor", headers=worker_h).status_code == 403
+
+
+# --- Phase 4: 5 Whys root cause ---------------------------------------------------------------------------------
+
+def test_root_cause_suggestion_is_validated_and_saved_only_when_confirmed(client, worker_h, supervisor_h):
+    from app.ai.schemas import RootCauseAnalysis
+    inc = new_incident(client, worker_h, category="caught_in_machinery", title="Glove pulled into conveyor roller",
+                       description="My glove was caught by the roller while I cleared a jam. The guard was open.")
+    assert client.post(f"/api/incidents/{inc['id']}/root-cause/suggest", headers=worker_h).status_code == 403
+    r = client.post(f"/api/incidents/{inc['id']}/root-cause/suggest", headers=supervisor_h)
+    assert r.status_code == 200
+    s = r.json()["root_cause_suggestion"]
+    RootCauseAnalysis.model_validate(s)  # same schema the live model must satisfy
+    assert s["demo_mode"] is True and 3 <= len(s["whys"]) <= 5 and "interlock" in s["root_cause"]
+    assert "Glove pulled into conveyor roller" in s["whys"][0]["question"]
+    assert s["suggested_actions"][0]["control_level"] in ("elimination", "substitution", "engineering")
+    assert r.json()["root_cause"] is None  # nothing is decided by the AI
+    # The reporter sees the confirmed root cause, never the raw suggestion.
+    assert client.get(f"/api/incidents/{inc['id']}", headers=worker_h).json()["root_cause_suggestion"] is None
+    saved = client.put(f"/api/incidents/{inc['id']}/root-cause",
+                       json={"root_cause": "Guard had no interlock and jams were cleared with the roller running."},
+                       headers=supervisor_h)
+    assert saved.status_code == 200 and saved.json()["root_cause"].startswith("Guard had no interlock")
+    assert client.get(f"/api/incidents/{inc['id']}", headers=worker_h).json()["root_cause"].startswith("Guard")
+
+
+def test_root_cause_schema_rejects_short_chains():
+    import pytest
+    from pydantic import ValidationError
+    from app.ai.schemas import RootCauseAnalysis
+    with pytest.raises(ValidationError):
+        RootCauseAnalysis.model_validate({"whys": [{"question": "Why?", "answer": "Because."}], "root_cause": "x",
+                                          "contributing_factors": [], "suggested_actions": [], "confidence": "low"})
+
+
+def test_every_category_has_a_demo_chain():
+    from app.ai.root_cause_demo import CHAINS
+    from app.schemas.reports import INCIDENT_CATEGORIES
+    assert set(INCIDENT_CATEGORIES) <= set(CHAINS)

@@ -177,7 +177,7 @@ function Bubble({ m }: { m: AIMessage }) {
   return (
     <div className="max-w-[92%] space-y-2">
       {m.classification === "emergency" && (
-        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-md bg-danger px-4 py-3 font-semibold text-white">
+        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-md bg-danger-solid px-4 py-3 font-semibold text-white">
           <ShieldAlert className="h-5 w-5 shrink-0" aria-hidden />
           <span className="flex-1">{t("ai.emergencyBanner")}</span>
           <Button asChild size="sm" variant="outline" className="border-white/40 bg-white text-danger hover:bg-white/90">
@@ -193,6 +193,14 @@ function Bubble({ m }: { m: AIMessage }) {
           {m.classification === "medical_concern" && <Badge tone="caution">{t("ai.tagMedical")}</Badge>}
         </div>
         <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
+        {m.sources && m.sources.length > 0 && (
+          <div className="mt-2 border-t border-line pt-2">
+            <p className="text-xs font-semibold text-muted">{t("kb.sources")}</p>
+            <ol className="mt-1 space-y-0.5 text-sm">{m.sources.map((s, i) => (
+              <li key={s.chunk_id}><Link className="text-info hover:underline" to={`/app/knowledge/${s.document_id}#c${s.chunk_id}`}>
+                [{i + 1}] {s.title}{s.heading ? ` › ${s.heading}` : ""}</Link></li>))}</ol>
+          </div>
+        )}
         <ListenButton text={m.content} className="-ml-2 mt-1" />
       </div>
     </div>

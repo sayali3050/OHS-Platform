@@ -1,7 +1,7 @@
 from collections.abc import Callable
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -19,8 +19,14 @@ _UNAUTHORIZED = HTTPException(
 )
 
 
+# What someone with a temporary password may still do: see who they are, change it, sign out, and never be
+# locked out of an emergency (raise or answer the alarm, see numbers).
+_ALLOWED_BEFORE_CHANGE = ("/api/auth/me", "/api/auth/change-password", "/api/auth/logout", "/api/emergency",
+                          "/api/notifications")
+
+
 def get_current_user(
-    creds: HTTPAuthorizationCredentials | None = Depends(bearer), db: Session = Depends(get_db)
+    request: Request, creds: HTTPAuthorizationCredentials | None = Depends(bearer), db: Session = Depends(get_db)
 ) -> User:
     if creds is None:
         raise _UNAUTHORIZED
@@ -33,6 +39,8 @@ def get_current_user(
     user = db.get(User, int(payload["sub"]))
     if user is None or not user.is_active:
         raise _UNAUTHORIZED
+    if user.must_change_password and not request.url.path.startswith(_ALLOWED_BEFORE_CHANGE):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Choose your own password first.")
     return user
 
 

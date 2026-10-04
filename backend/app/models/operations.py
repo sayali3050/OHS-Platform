@@ -53,10 +53,12 @@ class DrudgeryAssessment(TimestampMixin, Base):
     score: Mapped[int] = mapped_column(Integer, index=True, nullable=False)
     level: Mapped[str] = mapped_column(String(16), index=True, nullable=False)  # low | moderate | high
     interventions: Mapped[list | None] = mapped_column(JSON)
+    assessed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
 
 class WellbeingCheckin(TimestampMixin, Base):
     __tablename__ = "wellbeing_checkins"
+    __table_args__ = (UniqueConstraint("user_id", "checkin_date", name="uq_wellbeing_checkins_user_date"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     checkin_date: Mapped[date] = mapped_column(Date, index=True, nullable=False)

@@ -35,3 +35,18 @@ class KnowledgeDocument(TimestampMixin, Base):
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)
     summary: Mapped[str | None] = mapped_column(Text)
     uploaded_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    original_filename: Mapped[str | None] = mapped_column(String(255))
+    content_type: Mapped[str | None] = mapped_column(String(100))
+    size_bytes: Mapped[int] = mapped_column(Integer, default=0)
+    chunks: Mapped[list["KnowledgeChunk"]] = relationship(cascade="all, delete-orphan", order_by="KnowledgeChunk.position")
+
+
+class KnowledgeChunk(Base):
+    """One searchable passage of a document. Keyword search always works; `embedding` is filled when live AI is on."""
+    __tablename__ = "knowledge_chunks"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("knowledge_documents.id", ondelete="CASCADE"), index=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    heading: Mapped[str | None] = mapped_column(String(200))
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list | None] = mapped_column(JSON)

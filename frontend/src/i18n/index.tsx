@@ -1,12 +1,21 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { de } from "@/i18n/de";
 import { en, type Dictionary, type MessageKey } from "@/i18n/en";
-import { hi } from "@/i18n/hi";
-import { mr } from "@/i18n/mr";
 import type { Language } from "@/types/auth";
 
 export type { MessageKey };
-export const DICTIONARIES: Record<Language, Dictionary> = { en, hi, mr, de };
+
+/** English is always bundled (it's the fallback). The others load on first use, so a phone downloads one language,
+ * not four. Until one arrives, English shows for a moment. */
+const loaded: Partial<Record<Language, Dictionary>> = { en };
+const LOADERS: Record<Exclude<Language, "en">, () => Promise<Dictionary>> = {
+  hi: () => import("@/i18n/hi").then((m) => m.hi),
+  mr: () => import("@/i18n/mr").then((m) => m.mr),
+  de: () => import("@/i18n/de").then((m) => m.de),
+};
+
+export async function loadLanguage(lang: Language): Promise<void> {
+  if (!loaded[lang]) loaded[lang] = await LOADERS[lang as Exclude<Language, "en">]();
+}
 /** BCP-47 tags for dates, numbers, speech recognition and text-to-speech. */
 export const LOCALES: Record<Language, string> = { en: "en-IN", hi: "hi-IN", mr: "mr-IN", de: "de-DE" };
 
@@ -14,7 +23,7 @@ const STORAGE_KEY = "lang";
 type Values = Record<string, string | number>;
 
 export function translate(lang: Language, key: MessageKey, values?: Values): string {
-  let text: string = DICTIONARIES[lang][key] ?? en[key] ?? key;
+  let text: string = loaded[lang]?.[key] ?? en[key] ?? key;
   if (values) for (const [k, v] of Object.entries(values)) text = text.split(`{${k}}`).join(String(v));
   return text;
 }
@@ -50,6 +59,10 @@ export function I18nProvider({ children, userLanguage, onChange }: {
   children: ReactNode; userLanguage?: Language | null; onChange?: (lang: Language) => void;
 }) {
   const [lang, setLangState] = useState<Language>(() => userLanguage ?? initialLanguage());
+  const [, setLoadedCount] = useState(0);  // re-render once a dictionary arrives
+  useEffect(() => {
+    if (!loaded[lang]) loadLanguage(lang).then(() => setLoadedCount((n) => n + 1)).catch(() => { /* stay on English */ });
+  }, [lang]);
 
   useEffect(() => { if (userLanguage) setLangState(userLanguage); }, [userLanguage]);
   useEffect(() => {
@@ -58,7 +71,9 @@ export function I18nProvider({ children, userLanguage, onChange }: {
   }, [lang]);
 
   const setLang = useCallback((next: Language) => { setLangState(next); onChange?.(next); }, [onChange]);
-  const t = useCallback((key: MessageKey, values?: Values) => translate(lang, key, values), [lang]);
+  const ready = !!loaded[lang];
+  // `ready` is a dependency so components re-translate when the dictionary lands.
+  const t = useCallback((key: MessageKey, values?: Values) => translate(lang, key, values), [lang, ready]); // eslint-disable-line react-hooks/exhaustive-deps
   const value = useMemo(() => ({ lang, locale: LOCALES[lang], t, setLang }), [lang, t, setLang]);
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

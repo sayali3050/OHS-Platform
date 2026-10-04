@@ -8,6 +8,7 @@ import { Badge, EmptyState, Panel, Skeleton } from "@/components/ui/misc";
 import { AuthImage } from "@/components/reports/AuthImage";
 import { AuthAudio } from "@/components/VoiceRecorder";
 import { ActionsPanel } from "@/components/actions/ActionsPanel";
+import { RootCausePanel } from "@/components/actions/RootCausePanel";
 import { SeverityBadge, StatusBadge, StatusSteps } from "@/components/reports/badges";
 import { useT } from "@/i18n";
 import { hazardCategoryKey, incidentCategoryKey, priorityKey, statusKey } from "@/i18n/labels";
@@ -202,6 +203,8 @@ function History({ kind, id, version }: { kind: Kind; id: number; version: strin
     if (a.action === "status" && a.to_status) {
       return t("act.status", { actor, status: t(statusKey(a.to_status as IncidentStatus | HazardStatus, kind)) });
     }
+    if (a.action === "root_cause") return t("act.rootCause", { actor });
+    if (a.action === "root_cause_suggested") return t("act.rcaSuggested", { actor });
     return actor;
   };
 
@@ -227,6 +230,7 @@ function History({ kind, id, version }: { kind: Kind; id: number; version: strin
 export function IncidentDetailPage() {
   const { t, locale } = useT();
   const { data: i, setData, missing } = useReport<Incident>(api.incidents.get);
+  const [actionsVersion, setActionsVersion] = useState(0);
   const onStatus = useCallback(async (s: IncidentStatus, note: string | null) => {
     if (i) setData(await api.incidents.setStatus(i.id, s, note));
   }, [i, setData]);
@@ -254,7 +258,9 @@ export function IncidentDetailPage() {
         <Workflow kind="incident" status={i.status} allowed={i.allowed_transitions} departmentId={i.department?.id}
           investigator={i.investigator} onStatus={onStatus} onAssign={onAssign} />
       )}
-      <ActionsPanel report={{ kind: "incident", id: i.id }} canManage={i.can_manage} closed={i.status === "closed"} />
+      <RootCausePanel incident={i} onChange={setData} onActionAdded={() => setActionsVersion((v) => v + 1)} />
+      <ActionsPanel report={{ kind: "incident", id: i.id }} canManage={i.can_manage} closed={i.status === "closed"}
+        version={actionsVersion} />
       <Description title={t("detail.whatHappened")} text={i.description} language={i.original_language} original={i.original_description} />
       <Panel className="overflow-hidden">
         <Facts rows={[

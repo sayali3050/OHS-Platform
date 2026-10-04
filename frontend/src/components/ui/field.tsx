@@ -1,5 +1,6 @@
+import { Eye, EyeOff } from "lucide-react";
 import {
-  forwardRef, useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes,
+  forwardRef, useId, useState, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes,
 } from "react";
 import { cn } from "@/utils/cn";
 
@@ -36,6 +37,32 @@ export const TextField = forwardRef<HTMLInputElement, InputProps>(({ label, erro
   );
 });
 TextField.displayName = "TextField";
+
+type PasswordProps = Omit<InputProps, "type"> & { showLabel: string; hideLabel: string };
+
+/** Password input with a show/hide button, so people can check what they typed (especially on phones). */
+export const PasswordField = forwardRef<HTMLInputElement, PasswordProps>(
+  ({ label, error, hint, className, id, showLabel, hideLabel, ...props }, ref) => {
+    const auto = useId();
+    const fid = id ?? auto;
+    const [visible, setVisible] = useState(false);
+    return (
+      <Shell id={fid} label={label} error={error} hint={hint} className={className}>
+        <div className="relative">
+          <input ref={ref} id={fid} type={visible ? "text" : "password"} aria-invalid={!!error || undefined}
+            aria-describedby={error ? `${fid}-err` : hint ? `${fid}-hint` : undefined}
+            autoCapitalize="none" autoCorrect="off" spellCheck={false}
+            className={cn(control, "pr-12", error ? "border-danger" : "border-line")} {...props} />
+          <button type="button" onClick={() => setVisible((v) => !v)} aria-pressed={visible} aria-controls={fid}
+            aria-label={visible ? hideLabel : showLabel} title={visible ? hideLabel : showLabel}
+            className="absolute inset-y-0 right-0 grid w-11 place-items-center rounded-r-md text-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal">
+            {visible ? <EyeOff className="h-5 w-5" aria-hidden /> : <Eye className="h-5 w-5" aria-hidden />}
+          </button>
+        </div>
+      </Shell>
+    );
+  });
+PasswordField.displayName = "PasswordField";
 
 type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & FieldShell;
 

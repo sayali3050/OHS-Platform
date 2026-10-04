@@ -1,5 +1,5 @@
 """Import every model so Base.metadata is complete for Alembic and create_all."""
-from app.models.ai import AIConversation, AIMessage, KnowledgeDocument
+from app.models.ai import AIConversation, AIMessage, KnowledgeChunk, KnowledgeDocument
 from app.models.audit import AuditLog
 from app.models.incidents import (
     Attachment, CorrectiveAction, Hazard, Incident, PreventiveAction, RiskAssessment,
@@ -19,5 +19,5 @@ __all__ = [
     "ErgonomicAssessment", "Notification", "SafetyChecklist", "WellbeingCheckin", "WorkerFeedback", "Department",
     "Location", "Role", "User", "Worker", "PPEAssignment", "PPEItem", "QuizAttempt", "QuizQuestion",
     "TrainingCourse", "TrainingProgress", "TrainingQuiz", "EmergencyContact", "EmergencyResponse", "HealthCheck",
-    "WorkHistory",
+    "WorkHistory", "KnowledgeChunk",
 ]

@@ -8,7 +8,7 @@ from app.schemas.reports import HazardSummary, IncidentSummary
 
 
 class ScoreComponent(BaseModel):
-    key: Literal["ppe", "training"]
+    key: Literal["ppe", "training", "checklists"]
     label: str
     score: int
     weight: float
@@ -55,6 +55,7 @@ class WorkerDashboard(BaseModel):
     components: list[ScoreComponent]
     ppe: list[PPEStatus]
     training: list[TrainingStatus]
+    checklists: dict[str, int]
     reports: ReportCounts
 
 

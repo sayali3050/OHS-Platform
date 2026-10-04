@@ -64,7 +64,7 @@ function ActiveEmergencies() {
           </div>
           {!e.raised_by_me && (
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" className="bg-safe text-white hover:bg-safe/90" disabled={e.my_response === "safe"}
+              <Button size="sm" className="bg-safe-solid text-white hover:bg-safe-solid/90" disabled={e.my_response === "safe"}
                 onClick={() => respond(e.id, "safe").catch(() => toast.error(t("alarm.failed")))}>
                 <CheckCircle2 className="h-4 w-4" aria-hidden /> {t("alarm.safe")}
               </Button>
@@ -270,8 +270,8 @@ export default function EmergencyPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <div className="rounded-lg bg-danger p-5 text-white sm:p-6">
-        <p className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wider text-white/80">
+      <div className="rounded-lg bg-danger-solid p-5 text-white sm:p-6">
+        <p className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wider text-white">
           <ShieldAlert className="h-5 w-5" aria-hidden /> {t("em.title")}
         </p>
         <h1 className="mt-2 text-[26px] font-bold leading-tight sm:text-[30px]">
@@ -325,7 +325,7 @@ export default function EmergencyPage() {
               <button key={g.type} type="button" onClick={() => { setType(g.type); setSent(null); setVoice(null); setVoiceSent(false); }}
                 aria-pressed={type === g.type}
                 className={cn("flex min-h-[72px] items-center gap-3 rounded-md border px-3 text-left font-semibold transition-colors",
-                  type === g.type ? "border-danger bg-danger text-white" : "border-line bg-surface hover:bg-sunken")}>
+                  type === g.type ? "border-danger bg-danger-solid text-white" : "border-line bg-surface hover:bg-sunken")}>
                 <Icon className="h-6 w-6 shrink-0" aria-hidden />{g.label}
               </button>
             );
