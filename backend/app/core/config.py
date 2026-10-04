@@ -6,7 +6,10 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # One .env for the whole project, at the repository root. Docker Compose passes it to the container as real
+    # environment variables; running from backend/ outside Docker reads it from "../.env". Real environment
+    # variables always win over the file (that's how `make dev-api` points DATABASE_URL at localhost).
+    model_config = SettingsConfigDict(env_file="../.env", env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "SafeOps OHS Platform"
     environment: str = "development"

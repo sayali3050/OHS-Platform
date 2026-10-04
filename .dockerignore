@@ -3,4 +3,5 @@
 **/.pytest_cache
 **/*.db
 frontend/dist
-.env
+**/.env
+**/.venv

@@ -70,7 +70,8 @@ docker compose up -d db
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-cp ../.env.example .env     # set DATABASE_URL=postgresql+psycopg://ohs:ohs@localhost:5432/ohs
+# Uses the same root .env as Docker; only the database address changes, because outside Docker it's localhost:
+export DATABASE_URL=postgresql+psycopg://ohs:ohs@localhost:5432/ohs   # PowerShell: $env:DATABASE_URL="..."
 alembic upgrade head
 python -m app.seed
 uvicorn app.main:app --reload
