@@ -1,8 +1,9 @@
 """Seed synthetic DEMO data. Idempotent: safe to run on every container start.
 
 Every name, employee ID and record created here is fictional and marked as demo data.
-Phase 1 seeds the organisation (roles, departments, locations, people) plus PPE and training catalogues;
-later phases extend this file with incidents, hazards, CAPA, ergonomics and checklist history.
+Phase 1 seeds the organisation (roles, departments, locations, people) plus PPE and training catalogues.
+Phase 2 adds PPE assignments, training records, incidents, hazards and corrective actions (seed_history.py).
+Phase 3 adds department profiles, personal details, health checks and work history (seed_profiles.py).
 """
 import logging
 import random
@@ -14,6 +15,8 @@ from app.core.config import get_settings
 from app.database.session import SessionLocal
 from app.models import Department, Location, PPEItem, Role, TrainingCourse, User, Worker
 from app.models.enums import Language, RoleName, Shift
+from app.seed_history import seed_history
+from app.seed_profiles import seed_profiles
 from app.services.users import create_user
 
 log = logging.getLogger("seed")
@@ -118,6 +121,9 @@ def seed(db: Session) -> None:
         if not db.scalar(select(TrainingCourse).where(TrainingCourse.title == title)):
             db.add(TrainingCourse(title=title, category=category, is_mandatory=mandatory,
                                   description=f"{title} — demo course content."))
+    db.flush()
+    seed_history(db, worker)
+    seed_profiles(db)
     db.commit()
     log.info("Demo data ready: admin=%s supervisor=%s worker=%s", admin.email, supervisor.email, worker.email)
 

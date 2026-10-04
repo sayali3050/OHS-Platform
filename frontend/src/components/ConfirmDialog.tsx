@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n";
 
 interface Props {
   open: boolean; title: string; body: ReactNode; confirmLabel: string;
@@ -9,6 +10,7 @@ interface Props {
 /** Native <dialog>: focus trapping, Esc to close and inert background come for free. */
 export function ConfirmDialog({ open, title, body, confirmLabel, tone = "primary", busy, onConfirm, onCancel }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
+  const { t } = useT();
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
@@ -24,7 +26,7 @@ export function ConfirmDialog({ open, title, body, confirmLabel, tone = "primary
         <div className="mt-2 text-muted">{body}</div>
       </div>
       <div className="flex justify-end gap-2 border-t border-line bg-sunken/50 px-6 py-4">
-        <Button variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button variant="outline" onClick={onCancel}>{t("common.cancel")}</Button>
         <Button variant={tone} onClick={onConfirm} loading={busy}>{confirmLabel}</Button>
       </div>
     </dialog>

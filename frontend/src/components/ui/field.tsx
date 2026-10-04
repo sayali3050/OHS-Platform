@@ -1,4 +1,6 @@
-import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import {
+  forwardRef, useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes,
+} from "react";
 import { cn } from "@/utils/cn";
 
 const control =
@@ -53,6 +55,21 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectProps>(({ label, 
   );
 });
 SelectField.displayName = "SelectField";
+
+type TextAreaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & FieldShell;
+
+export const TextAreaField = forwardRef<HTMLTextAreaElement, TextAreaProps>(({ label, error, hint, className, id, ...props }, ref) => {
+  const auto = useId();
+  const fid = id ?? auto;
+  return (
+    <Shell id={fid} label={label} error={error} hint={hint} className={className}>
+      <textarea ref={ref} id={fid} rows={4} aria-invalid={!!error || undefined}
+        aria-describedby={error ? `${fid}-err` : hint ? `${fid}-hint` : undefined}
+        className={cn(control, "h-auto min-h-[112px] py-2.5 leading-relaxed", error ? "border-danger" : "border-line")} {...props} />
+    </Shell>
+  );
+});
+TextAreaField.displayName = "TextAreaField";
 
 export function Checkbox({ label, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return (

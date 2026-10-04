@@ -39,6 +39,11 @@ class Incident(TimestampMixin, Base):
 
     reporter = relationship("User", foreign_keys=[reporter_id])
     investigator = relationship("User", foreign_keys=[investigator_id])
+    department = relationship("Department")
+    location = relationship("Location")
+    attachments: Mapped[list["Attachment"]] = relationship(
+        primaryjoin="Attachment.incident_id == Incident.id", order_by="Attachment.id", viewonly=True
+    )
 
 
 class Hazard(TimestampMixin, Base):
@@ -58,6 +63,13 @@ class Hazard(TimestampMixin, Base):
     status: Mapped[HazardStatus] = mapped_column(enum_col(HazardStatus), default=HazardStatus.open, index=True)
     ai_analysis: Mapped[dict | None] = mapped_column(JSON)
 
+    reporter = relationship("User", foreign_keys=[reporter_id])
+    department = relationship("Department")
+    location = relationship("Location")
+    attachments: Mapped[list["Attachment"]] = relationship(
+        primaryjoin="Attachment.hazard_id == Hazard.id", order_by="Attachment.id", viewonly=True
+    )
+
 
 class Attachment(TimestampMixin, Base):
     """Uploaded evidence. Files live under an opaque storage key, never a user-supplied path."""
@@ -65,6 +77,8 @@ class Attachment(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     incident_id: Mapped[int | None] = mapped_column(ForeignKey("incidents.id", ondelete="CASCADE"), index=True)
     hazard_id: Mapped[int | None] = mapped_column(ForeignKey("hazards.id", ondelete="CASCADE"), index=True)
+    emergency_event_id: Mapped[int | None] = mapped_column(ForeignKey("emergency_events.id", ondelete="CASCADE"),
+                                                           index=True)
     uploaded_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     storage_key: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -102,6 +116,8 @@ class CorrectiveAction(TimestampMixin, Base):
     status: Mapped[ActionStatus] = mapped_column(enum_col(ActionStatus), default=ActionStatus.pending, index=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     verification_notes: Mapped[str | None] = mapped_column(Text)
+    completion_note: Mapped[str | None] = mapped_column(Text)  # what the responsible person did
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
 
 class PreventiveAction(TimestampMixin, Base):
@@ -116,3 +132,5 @@ class PreventiveAction(TimestampMixin, Base):
     priority: Mapped[Priority] = mapped_column(enum_col(Priority), default=Priority.medium)
     status: Mapped[ActionStatus] = mapped_column(enum_col(ActionStatus), default=ActionStatus.pending, index=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completion_note: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))

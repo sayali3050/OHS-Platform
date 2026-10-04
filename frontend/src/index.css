@@ -19,6 +19,9 @@
     --danger: 6 72% 45%;
     --info: 208 70% 40%;
     --shadow: 212 30% 20%;
+    /* Chart series (validated for colour-blind separation and contrast on this surface). */
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
     color-scheme: light;
   }
   .dark {
@@ -36,6 +39,8 @@
     --danger: 6 80% 62%;
     --info: 208 80% 64%;
     --shadow: 0 0% 0%;
+    --series-1: #3987e5;
+    --series-2: #d95926;
     color-scheme: dark;
   }
   html { -webkit-text-size-adjust: 100%; }

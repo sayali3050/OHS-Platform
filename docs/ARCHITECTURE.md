@@ -117,15 +117,27 @@ The rules from section 34 are enforced in code, not only in prompts:
 - Pydantic validation on all inputs, flattened into `{field: message}` so forms show errors inline; ORM-only queries; CORS restricted to configured origins; API key only ever read server-side.
 - Uploads (Phase 2): extension and MIME allow-list, size limit, magic-byte sniffing, files stored under random keys and served only through an authorised endpoint.
 
-## 6. Implementation plan
+## 6. Reporting design (Phase 2)
+
+**Notification routing.** Every report notifies the supervisors of the report's department plus the reporter's own supervisor. High or critical severity, or any injury, also notifies every admin. A report with no department goes to admins so it can't be missed. The reporter gets a "report received" notification, except for anonymous hazards.
+
+**Anonymity.** For an anonymous hazard, `reporter_id`, `attachments.uploaded_by`, and the audit log's `user_id` and `ip_address` are all stored as `NULL`, and notifications say "reported anonymously". Photo metadata is stripped from every upload, which matters most here. The worker gets a reference number but can't see the report in their own list, because nothing links it to them.
+
+**Photo pipeline.** Count → size → magic-byte sniff (JPEG/PNG/WebP) → full Pillow decode with a pixel cap (against decompression bombs) → EXIF orientation applied → downscale to 2048 px → re-encode without metadata → store as `<random hex>.<ext>`. Every photo is validated before anything is written, so one bad file rejects the whole report cleanly.
+
+**Safety score.** A weighted average of components a worker can check for themselves: PPE compliance (assigned items in date and passing inspection) and mandatory training (current certificates), weighted 50/50. A component with nothing to measure is left out and the weights re-normalised, rather than scored as 0 or 100. Bands: 85 and above is good, 60 and above is fair, otherwise needs attention. Phase 6 adds checklist completion.
+
+**Emergency mode.** Guidance is fixed, general text (raise the alarm, get clear, call trained help), never medical treatment advice. Contacts come only from `EMERGENCY_CONTACTS` and real user records.
+
+## 7. Implementation plan
 
 Each phase ends with passing tests and a clean `docker compose up`. Nothing is added to the navigation until it works end to end.
 
 | Phase | Delivers | Done when |
 |---|---|---|
 | **1. Foundation** ✅ | Monorepo, 30-table schema + migration, seed data (41 users, 6 departments, 16 locations), JWT auth, RBAC, registration with approval, password reset, audit log, user management, app shell, dark mode, Docker | 22 backend + 4 frontend tests pass; migrations verified on PostgreSQL 16 |
-| **2. Worker reporting** | Landing page, worker dashboard (safety score, quick actions), incident and hazard reporting with photo upload, anonymous hazards, emergency mode, notifications, seed history of 20+ incidents and hazards | A worker can report from a phone and the supervisor gets a notification |
-| **3. Supervisor & admin** | Incident board and workflow, assignment, CAPA with due dates and overdue status, KPI dashboards, filters, global search, audit log viewer | Full reported → closed lifecycle works with the right permissions at each step |
+| **2. Worker reporting** ✅ | Landing page, worker dashboard (safety score, quick actions), incident and hazard reporting with photo upload, anonymous hazards, emergency mode, notifications, seed history of 20+ incidents and hazards | 52 backend + 9 frontend tests pass; report-to-notification flow verified on PostgreSQL through nginx |
+| **3. Supervisor & admin** ✅ | Incident board, workflow with assignment, CAPA (corrective and preventive actions with owners, due dates, derived overdue status, notifications, "My actions"), workflow gates (no verification until every corrective action is done; no "controlled" hazard with open actions), supervisor and admin KPI dashboards, report filters (type, department, dates, assigned to me), global search (Ctrl+K), audit log viewer | 109 backend + 18 frontend tests pass; reported → closed lifecycle verified on PostgreSQL through nginx, migrations 0002–0003 verified (upgrade, downgrade, upgrade) |
 | **4. AI services** | Provider abstraction, guardrails, SafeAssist chat with history, AI incident structuring, hazard classification, 5-Whys root-cause suggestions, AI rate limiting | Every AI endpoint has schema-validation tests and works in Demo AI Mode |
 | **5. Risk & drudgery** | Risk assessment with interactive 5×5 matrix, hierarchy-of-controls view, ergonomic questionnaire, drudgery score, fatigue check-in | Scores are deterministic and unit-tested; AI only adds explanations |
 | **6. Training, PPE, checklists** | Courses, AI quiz generation, quiz attempts and certificates, PPE assignments and compliance, configurable checklists that suggest a hazard report on "No" | Compliance numbers on dashboards come from these tables |
@@ -134,15 +146,22 @@ Each phase ends with passing tests and a clean `docker compose up`. Nothing is a
 | **9. Hardening** | Performance (pagination, indexes, lazy loading), accessibility pass, security review, broader test coverage | Lighthouse accessibility ≥ 95 on worker screens |
 | **10. Documentation & demo** | Project report sections (use-case, DFD, sequence diagrams, test cases, results), screenshots, scripted demo flow | Demo runs start to finish from a fresh `docker compose up` |
 
-## 7. API map
+## 8. API map
 
 | Prefix | Status | Notes |
 |---|---|---|
 | `/api/health`, `/api/system/info` | Phase 1 | Health check; runtime flags such as Demo AI Mode |
 | `/api/auth` | Phase 1 | login, register, me, logout, forgot/reset password, departments |
 | `/api/users` | Phase 1 | Admin only: list/search/filter/paginate, create, update role/department/active |
-| `/api/incidents`, `/api/hazards`, `/api/emergency`, `/api/notifications` | Phase 2 | |
-| `/api/corrective-actions`, `/api/workers`, `/api/analytics` | Phase 3 | |
+| `/api/incidents`, `/api/hazards` | Phase 2 | Create (multipart: `payload` JSON + up to 3 `photos`), list with filters and search, detail. Scoped by role. |
+| `/api/attachments/{id}` | Phase 2 | Evidence download, same visibility as the parent report |
+| `/api/notifications` | Phase 2 | List, unread count, mark read, mark all read |
+| `/api/emergency`, `/api/emergency/alert` | Phase 2 | Guidance and configured contacts; critical alert (5 per minute per user) |
+| `/api/locations`, `/api/dashboard/worker` | Phase 2 | Location picker data; safety score with breakdown, PPE, training, recent reports |
+| `/api/actions` | Phase 3 | CAPA: list (mine / team, open / overdue / done), create, update progress, delete; `/api/actions/people` lists who an action can be given to |
+| `/api/incidents/board`, `/api/dashboard/supervisor`, `/api/dashboard/admin` | Phase 3 | Workflow board cards; KPI dashboards |
+| `/api/search`, `/api/audit` | Phase 3 | Global search within each user's visibility; admin-only audit log with filters |
+| `/api/people`, `/api/departments`, `/api/emergency/active` | Added | Profiles, health checks and team management; department profiles; site-wide alarm and roll call |
 | `/api/ai` | Phase 4 | Rate limited per user |
 | `/api/risk-assessments`, `/api/ergonomics`, `/api/drudgery` | Phase 5 | |
 | `/api/training`, `/api/ppe`, `/api/checklists` | Phase 6 | |

@@ -1,0 +1,150 @@
+### SafeOps API: Phase 2 manual tests (VS Code "REST Client" extension)
+### Click "Send Request" above each request. Run the three logins first; later requests reuse their tokens.
+### Target: Docker stack via nginx. For local uvicorn, change to http://localhost:8000/api
+
+@base = http://localhost:8080/api
+@password = Demo@1234
+
+# @name worker
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{ "email": "worker@demo.com", "password": "{{password}}" }
+
+###
+# @name supervisor
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{ "email": "supervisor@demo.com", "password": "{{password}}" }
+
+###
+# @name admin
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{ "email": "admin@demo.com", "password": "{{password}}" }
+
+###
+@w = {{worker.response.body.access_token}}
+@s = {{supervisor.response.body.access_token}}
+@a = {{admin.response.body.access_token}}
+
+### ---------------------------------------------------------------- Reference data
+GET {{base}}/locations
+Authorization: Bearer {{w}}
+
+### ---------------------------------------------------------------- Worker dashboard
+# Expect score 90: PPE 80 (gloves overdue), training 100
+GET {{base}}/dashboard/worker
+Authorization: Bearer {{w}}
+
+### Security check: supervisors get 403 on the worker dashboard
+GET {{base}}/dashboard/worker
+Authorization: Bearer {{s}}
+
+### ---------------------------------------------------------------- Report an incident (JSON payload + photo)
+# @name newIncident
+POST {{base}}/incidents
+Authorization: Bearer {{w}}
+Content-Type: multipart/form-data; boundary=----SafeOps
+
+------SafeOps
+Content-Disposition: form-data; name="payload"
+
+{"title": "Pallet slipped off forklift forks", "description": "Pallet slid off while turning into aisle 3. Nobody hurt.", "category": "near_miss", "severity": "high", "occurred_at": "2026-10-01T09:30:00Z", "location_id": 1}
+------SafeOps
+Content-Disposition: form-data; name="photos"; filename="sample-photo.jpg"
+Content-Type: image/jpeg
+
+< ./docs/sample-photo.jpg
+------SafeOps--
+
+### Validation check: expect 422 with per-field errors (title too short, injury without details)
+POST {{base}}/incidents
+Authorization: Bearer {{w}}
+Content-Type: multipart/form-data; boundary=----SafeOps
+
+------SafeOps
+Content-Disposition: form-data; name="payload"
+
+{"title": "x", "description": "Something happened here", "category": "other", "severity": "low", "occurred_at": "2026-10-01T09:30:00Z", "injury_occurred": true}
+------SafeOps--
+
+### ---------------------------------------------------------------- Report an anonymous hazard
+# Response has "reporter": null, and nothing in the database links it to the worker
+# @name newHazard
+POST {{base}}/hazards
+Authorization: Bearer {{w}}
+Content-Type: multipart/form-data; boundary=----SafeOps
+
+------SafeOps
+Content-Disposition: form-data; name="payload"
+
+{"category": "blocked_exit", "description": "Fire exit by the loading dock blocked by pallets again.", "severity": "high", "is_anonymous": true}
+------SafeOps--
+
+### Security check: a text file renamed .jpg is rejected (422, field "photos")
+POST {{base}}/hazards
+Authorization: Bearer {{w}}
+Content-Type: multipart/form-data; boundary=----SafeOps
+
+------SafeOps
+Content-Disposition: form-data; name="payload"
+
+{"category": "other", "description": "Testing the upload filter.", "severity": "low"}
+------SafeOps
+Content-Disposition: form-data; name="photos"; filename="photo.jpg"
+Content-Type: image/jpeg
+
+<script>alert(1)</script>
+------SafeOps--
+
+### ---------------------------------------------------------------- Visibility rules
+# Worker: own named reports only (scope "own")
+GET {{base}}/incidents
+Authorization: Bearer {{w}}
+
+### Supervisor: their department (scope "department")
+GET {{base}}/incidents?status=reported
+Authorization: Bearer {{s}}
+
+### Admin: everything, with filters and search
+GET {{base}}/incidents?severity=critical&q=press
+Authorization: Bearer {{a}}
+
+### Supervisor opens the new incident
+GET {{base}}/incidents/{{newIncident.response.body.id}}
+Authorization: Bearer {{s}}
+
+### Supervisor sees the anonymous hazard, without a reporter
+GET {{base}}/hazards/{{newHazard.response.body.id}}
+Authorization: Bearer {{s}}
+
+### Evidence photo (same visibility rules as the report)
+GET {{base}}/attachments/{{newIncident.response.body.attachments[0].id}}
+Authorization: Bearer {{s}}
+
+### ---------------------------------------------------------------- Notifications
+GET {{base}}/notifications/unread-count
+Authorization: Bearer {{s}}
+
+###
+GET {{base}}/notifications
+Authorization: Bearer {{s}}
+
+###
+POST {{base}}/notifications/read-all
+Authorization: Bearer {{s}}
+
+### ---------------------------------------------------------------- Emergency mode
+# contacts_configured is false until EMERGENCY_CONTACTS is set in .env
+GET {{base}}/emergency
+Authorization: Bearer {{w}}
+
+### Sends a critical in-app alert to supervisors and admins (rate limited: 5 per minute)
+POST {{base}}/emergency/alert
+Authorization: Bearer {{w}}
+Content-Type: application/json
+
+{ "emergency_type": "fire", "notes": "Smoke from the baler", "location_id": 1 }

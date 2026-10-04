@@ -1,0 +1,485 @@
+"""Server-side text in the four supported languages.
+
+Everything the server writes for a person to read (notifications, emergency guidance, AI fallbacks) goes through
+`t(lang, key, **values)`. Missing keys fall back to English, so a gap in a translation never breaks a screen.
+The UI's own labels live in the frontend dictionaries; the two are kept in step by tests.
+"""
+from app.models.enums import Language
+
+LANGUAGE_NAMES = {Language.en: "English", Language.hi: "Hindi", Language.mr: "Marathi", Language.de: "German"}
+
+_EN = {
+    "severity.low": "Low", "severity.medium": "Medium", "severity.high": "High", "severity.critical": "Critical",
+
+    "hazard.unsafe_machine": "Unsafe machine", "hazard.slippery_floor": "Slippery floor",
+    "hazard.exposed_wire": "Exposed wire", "hazard.missing_ppe": "Missing PPE", "hazard.excessive_noise": "Loud noise",
+    "hazard.poor_lighting": "Poor lighting", "hazard.chemical_leak": "Chemical leak",
+    "hazard.unsafe_lifting": "Unsafe lifting", "hazard.fire_hazard": "Fire risk", "hazard.blocked_exit": "Blocked exit",
+    "hazard.ergonomic": "Awkward posture", "hazard.other": "Something else",
+
+    "incident_status.reported": "Reported", "incident_status.assigned": "Assigned",
+    "incident_status.investigating": "Investigating", "incident_status.corrective_action": "Corrective action",
+    "incident_status.verification": "Verification", "incident_status.closed": "Closed",
+    "hazard_status.open": "Open", "hazard_status.in_review": "In review", "hazard_status.controlled": "Controlled",
+    "hazard_status.closed": "Closed",
+
+    "note.incident_reported.title": "{severity} incident reported{where}: {title}",
+    "note.incident_reported.body": "{reference} reported by {name}.",
+    "note.injury": "Someone was injured.",
+    "note.hazard_reported.title": "{severity} hazard reported{where}: {category}",
+    "note.hazard_reported.body": "{reference} reported by {name}.",
+    "note.hazard_reported.anonymous": "{reference} reported anonymously.",
+    "note.where": " at {place}",
+    "note.received_incident.title": "Your report {reference} was received",
+    "note.received_incident.body": "Your supervisor has been notified. You can follow its progress under My reports.",
+    "note.received_hazard.title": "Your hazard report {reference} was received",
+    "note.received_hazard.body": "Your supervisor has been notified.",
+    "note.status.title": "{reference} is now: {status}",
+    "note.status.body": "Updated by {name}.",
+    "note.status.body_note": "Updated by {name}: \"{note}\"",
+    "note.assigned.title": "You have been asked to investigate {reference}",
+    "note.assigned.body": "{title}. Assigned by {name}.",
+    "note.emergency.title": "EMERGENCY: {type} ({where})",
+    "note.emergency.body": "Raised by {name}{phone}.",
+    "note.emergency.phone": ", phone {phone}",
+    "note.emergency.notes": " Notes: {notes}",
+    "note.no_location": "location not given",
+
+    "emergency.first_step": "If anyone is in immediate danger, raise the alarm and call your site emergency number now.",
+    "emergency.fire.label": "Fire or smoke",
+    "emergency.fire.steps": [
+        "Raise the alarm: shout \"Fire\" and use the nearest fire alarm call point.",
+        "Leave by the nearest safe exit. Don't use lifts and don't stop to collect belongings.",
+        "Close doors behind you if it is safe to do so.",
+        "Go to your assembly point and tell the fire warden if anyone is missing.",
+        "Only use an extinguisher if you are trained, the fire is small and your exit is behind you.",
+    ],
+    "emergency.medical.label": "Someone is hurt or unwell",
+    "emergency.medical.steps": [
+        "Make sure the area is safe for you before you approach.",
+        "Call for a trained first aider and the site emergency number.",
+        "Don't move the person unless they are in immediate danger where they are.",
+        "Stay with them, keep them calm, and send someone to meet the responders.",
+    ],
+    "emergency.chemical_spill.label": "Chemical spill or leak",
+    "emergency.chemical_spill.steps": [
+        "Move away from the spill, upwind if outdoors, and keep others away.",
+        "Don't touch, smell or try to identify the substance.",
+        "Raise the alarm and tell your supervisor which area and, if known, which container.",
+        "Only trained staff with the right PPE should clean up, using the spill kit and safety data sheet.",
+    ],
+    "emergency.machinery.label": "Machine accident",
+    "emergency.machinery.steps": [
+        "Press the emergency stop if you can reach it safely.",
+        "Don't reach into the machine or try to free anyone trapped by it.",
+        "Call for help and keep others back from the machine.",
+        "Leave the machine stopped and locked out until a supervisor releases it.",
+    ],
+    "emergency.electrical.label": "Electrical incident",
+    "emergency.electrical.steps": [
+        "Don't touch the person or equipment if they may still be live.",
+        "Switch off power at the isolator only if it is safe and you know where it is.",
+        "Keep everyone back and raise the alarm.",
+        "Wait for a qualified electrician or trained responder.",
+    ],
+    "emergency.other.label": "Other emergency",
+    "emergency.other.steps": [
+        "Get yourself and others away from the danger.",
+        "Raise the alarm and call the site emergency number.",
+        "Tell your supervisor what happened and where.",
+    ],
+    "emergency.supervisor_contact": "Your supervisor, {name}",
+    "emergency.alert_sent": "Alert sent. {count} people have been notified in the app. This does not replace calling for help.",
+    "emergency.alert_sent_one": "Alert sent. 1 person has been notified in the app. This does not replace calling for help.",
+    "note.action_assigned.title": "New action for you on {reference}",
+    "note.action_assigned.body": "{description} Due {due}. Given by {name}.",
+    "note.action_done.title": "Action completed on {reference}",
+    "note.action_done.body": "Completed by {name}.",
+    "note.action_done.body_note": "Completed by {name}: \"{note}\"",
+    "emergency.public.emergency": "National emergency (all services)",
+    "emergency.public.police": "Police",
+    "emergency.public.fire": "Fire brigade",
+    "emergency.public.ambulance": "Ambulance",
+    "emergency.public.women": "Women's helpline",
+    "emergency.public.disaster": "Disaster management",
+    "emergency.incident_title": "Emergency alarm: {type}",
+    "emergency.incident_body": "Raised from Emergency mode by {name}. Every person was alarmed and asked to confirm they are safe. Investigate the cause so it can't happen again.",
+    "note.alarm.body": "Raised by {name}{phone}. Open the app, follow the steps and tell us if you are safe.",
+    "note.resolved.title": "All clear: the {type} emergency is over",
+    "note.resolved.body": "Closed by {name}.",
+    "note.resolved.body_note": 'Closed by {name}: "{note}"',
+    "note.need_help.title": "{name} needs help ({type} emergency)",
+    "note.need_help.body": "Sent from the alarm screen{phone}. Last known area: {where}.",
+
+    "ai.escalation": "This sounds like an emergency. If anyone is in danger, raise the alarm and call your site "
+                     "emergency number now. Open Emergency mode in this app for the steps to follow and to alert "
+                     "your supervisor.",
+    "ai.medical": "I can't give medical advice or diagnose anything. If someone is hurt or feels unwell, get a "
+                  "trained first aider now, and see a doctor if it doesn't get better.",
+    "ai.unavailable": "SafeAssist couldn't answer just now. Try again in a minute. For anything urgent, use "
+                      "Emergency mode or tell your supervisor.",
+    "ai.number_removed": "[number removed: use the Emergency screen for real contacts]",
+    "ai.suggest_reason": "Suggested because the description mentions: {words}.",
+    "ai.suggest_reason_none": "No clear keywords were found, so this is a cautious default. Please check it.",
+}
+
+_HI = {
+    "severity.low": "कम", "severity.medium": "मध्यम", "severity.high": "गंभीर", "severity.critical": "बहुत गंभीर",
+
+    "hazard.unsafe_machine": "असुरक्षित मशीन", "hazard.slippery_floor": "फिसलन वाला फ़र्श",
+    "hazard.exposed_wire": "खुला तार", "hazard.missing_ppe": "सुरक्षा उपकरण नहीं", "hazard.excessive_noise": "तेज़ शोर",
+    "hazard.poor_lighting": "कम रोशनी", "hazard.chemical_leak": "रसायन का रिसाव",
+    "hazard.unsafe_lifting": "असुरक्षित तरीके से उठाना", "hazard.fire_hazard": "आग का खतरा",
+    "hazard.blocked_exit": "बंद निकास", "hazard.ergonomic": "शरीर की गलत स्थिति", "hazard.other": "कुछ और",
+
+    "incident_status.reported": "दर्ज", "incident_status.assigned": "सौंपा गया",
+    "incident_status.investigating": "जाँच जारी", "incident_status.corrective_action": "सुधार का काम",
+    "incident_status.verification": "पुष्टि", "incident_status.closed": "बंद",
+    "hazard_status.open": "खुला", "hazard_status.in_review": "जाँच में", "hazard_status.controlled": "नियंत्रित",
+    "hazard_status.closed": "बंद",
+
+    "note.incident_reported.title": "{severity} घटना दर्ज{where}: {title}",
+    "note.incident_reported.body": "{reference}, {name} ने दर्ज की।",
+    "note.injury": "किसी को चोट लगी है।",
+    "note.hazard_reported.title": "{severity} खतरा दर्ज{where}: {category}",
+    "note.hazard_reported.body": "{reference}, {name} ने दर्ज किया।",
+    "note.hazard_reported.anonymous": "{reference} बिना नाम के दर्ज किया गया।",
+    "note.where": " ({place})",
+    "note.received_incident.title": "आपकी रिपोर्ट {reference} मिल गई है",
+    "note.received_incident.body": "आपके सुपरवाइज़र को बता दिया गया है। आप 'मेरी रिपोर्ट' में इसकी प्रगति देख सकते हैं।",
+    "note.received_hazard.title": "आपकी खतरे की रिपोर्ट {reference} मिल गई है",
+    "note.received_hazard.body": "आपके सुपरवाइज़र को बता दिया गया है।",
+    "note.status.title": "{reference} की स्थिति अब: {status}",
+    "note.status.body": "{name} ने बदली।",
+    "note.status.body_note": "{name} ने बदली: \"{note}\"",
+    "note.assigned.title": "आपको {reference} की जाँच सौंपी गई है",
+    "note.assigned.body": "{title}। {name} ने सौंपा।",
+    "note.emergency.title": "आपातकाल: {type} ({where})",
+    "note.emergency.body": "{name} ने भेजा{phone}।",
+    "note.emergency.phone": ", फ़ोन {phone}",
+    "note.emergency.notes": " जानकारी: {notes}",
+    "note.no_location": "जगह नहीं बताई",
+
+    "emergency.first_step": "अगर किसी की जान को तुरंत खतरा है, तो अलार्म बजाइए और अभी साइट का आपातकालीन नंबर मिलाइए।",
+    "emergency.fire.label": "आग या धुआँ",
+    "emergency.fire.steps": [
+        "अलार्म बजाइए: ज़ोर से \"आग\" चिल्लाइए और पास वाला फ़ायर अलार्म दबाइए।",
+        "पास वाले सुरक्षित रास्ते से बाहर निकलिए। लिफ़्ट मत लीजिए और सामान लेने मत रुकिए।",
+        "अगर सुरक्षित हो तो पीछे के दरवाज़े बंद कर दीजिए।",
+        "इकट्ठा होने की जगह (असेंबली पॉइंट) पर जाइए और कोई गायब हो तो फ़ायर वार्डन को बताइए।",
+        "आग बुझाने वाला सिलेंडर तभी चलाइए जब आपको ट्रेनिंग मिली हो, आग छोटी हो और निकलने का रास्ता आपके पीछे हो।",
+    ],
+    "emergency.medical.label": "कोई घायल या बीमार है",
+    "emergency.medical.steps": [
+        "पास जाने से पहले देख लीजिए कि वहाँ आपके लिए खतरा तो नहीं है।",
+        "ट्रेनिंग वाले फ़र्स्ट एडर को बुलाइए और साइट का आपातकालीन नंबर मिलाइए।",
+        "घायल व्यक्ति को तब तक मत हिलाइए जब तक वहाँ उसकी जान को खतरा न हो।",
+        "उसके साथ रहिए, उसे शांत रखिए, और मदद करने वालों को लाने के लिए किसी को भेजिए।",
+    ],
+    "emergency.chemical_spill.label": "रसायन गिरना या रिसना",
+    "emergency.chemical_spill.steps": [
+        "गिरे हुए रसायन से दूर हटिए और दूसरों को भी दूर रखिए।",
+        "उसे छूइए मत, सूँघिए मत और पहचानने की कोशिश मत कीजिए।",
+        "अलार्म बजाइए और सुपरवाइज़र को बताइए कि किस जगह और (अगर पता हो) किस डिब्बे से रिसाव है।",
+        "सफ़ाई सिर्फ़ ट्रेनिंग वाले लोग सही सुरक्षा उपकरण पहनकर करें।",
+    ],
+    "emergency.machinery.label": "मशीन से दुर्घटना",
+    "emergency.machinery.steps": [
+        "अगर सुरक्षित तरीके से पहुँच सकें तो इमरजेंसी स्टॉप बटन दबाइए।",
+        "मशीन में हाथ मत डालिए और फँसे व्यक्ति को खुद निकालने की कोशिश मत कीजिए।",
+        "मदद बुलाइए और दूसरों को मशीन से दूर रखिए।",
+        "सुपरवाइज़र के कहने तक मशीन बंद और लॉक रहने दीजिए।",
+    ],
+    "emergency.electrical.label": "बिजली की दुर्घटना",
+    "emergency.electrical.steps": [
+        "अगर व्यक्ति या उपकरण में करंट हो सकता है तो उन्हें मत छूइए।",
+        "मेन स्विच तभी बंद कीजिए जब सुरक्षित हो और आपको पता हो कि वह कहाँ है।",
+        "सबको दूर रखिए और अलार्म बजाइए।",
+        "योग्य इलेक्ट्रीशियन या ट्रेनिंग वाले व्यक्ति का इंतज़ार कीजिए।",
+    ],
+    "emergency.other.label": "कोई और आपातकाल",
+    "emergency.other.steps": [
+        "खुद को और दूसरों को खतरे से दूर ले जाइए।",
+        "अलार्म बजाइए और साइट का आपातकालीन नंबर मिलाइए।",
+        "सुपरवाइज़र को बताइए कि क्या हुआ और कहाँ हुआ।",
+    ],
+    "emergency.supervisor_contact": "आपके सुपरवाइज़र, {name}",
+    "emergency.alert_sent": "अलर्ट भेज दिया गया। ऐप में {count} लोगों को सूचना मिल गई है। फिर भी मदद के लिए फ़ोन ज़रूर कीजिए।",
+    "emergency.alert_sent_one": "अलर्ट भेज दिया गया। ऐप में 1 व्यक्ति को सूचना मिल गई है। फिर भी मदद के लिए फ़ोन ज़रूर कीजिए।",
+    "note.action_assigned.title": "{reference} पर आपके लिए नया काम",
+    "note.action_assigned.body": "{description} आखिरी तारीख {due}। {name} ने दिया।",
+    "note.action_done.title": "{reference} का काम पूरा हुआ",
+    "note.action_done.body": "{name} ने पूरा किया।",
+    "note.action_done.body_note": "{name} ने पूरा किया: \"{note}\"",
+    "emergency.public.emergency": "राष्ट्रीय आपातकालीन नंबर (सभी सेवाएँ)",
+    "emergency.public.police": "पुलिस",
+    "emergency.public.fire": "फायर ब्रिगेड",
+    "emergency.public.ambulance": "एम्बुलेंस",
+    "emergency.public.women": "महिला हेल्पलाइन",
+    "emergency.public.disaster": "आपदा प्रबंधन",
+    "emergency.incident_title": "आपातकालीन अलार्म: {type}",
+    "emergency.incident_body": "{name} ने आपातकालीन मोड से भेजा। सभी को अलार्म मिला और सुरक्षित होने की पुष्टि करने को कहा गया। कारण की जाँच कीजिए ताकि ऐसा दोबारा न हो।",
+    "note.alarm.body": "{name} ने भेजा{phone}। ऐप खोलिए, निर्देशों का पालन कीजिए और बताइए कि आप सुरक्षित हैं।",
+    "note.resolved.title": "खतरा टल गया: {type} आपातकाल समाप्त",
+    "note.resolved.body": "{name} ने बंद किया।",
+    "note.resolved.body_note": '{name} ने बंद किया: "{note}"',
+    "note.need_help.title": "{name} को मदद चाहिए ({type} आपातकाल)",
+    "note.need_help.body": "अलार्म स्क्रीन से भेजा गया{phone}। आखिरी जानकारी वाली जगह: {where}।",
+
+    "ai.escalation": "यह आपातकाल लग रहा है। अगर किसी को खतरा है, तो अलार्म बजाइए और अभी साइट का आपातकालीन नंबर "
+                     "मिलाइए। क्या करना है यह देखने और सुपरवाइज़र को बताने के लिए इस ऐप में 'आपातकाल' खोलिए।",
+    "ai.medical": "मैं डॉक्टर की सलाह नहीं दे सकता और बीमारी नहीं पहचान सकता। अगर किसी को चोट लगी है या तबियत ठीक "
+                  "नहीं है, तो अभी फ़र्स्ट एडर को बुलाइए, और ठीक न हो तो डॉक्टर को दिखाइए।",
+    "ai.unavailable": "SafeAssist अभी जवाब नहीं दे पाया। एक मिनट बाद फिर कोशिश कीजिए। ज़रूरी बात हो तो 'आपातकाल' खोलिए "
+                      "या सुपरवाइज़र को बताइए।",
+    "ai.number_removed": "[नंबर हटाया गया: असली नंबर 'आपातकाल' स्क्रीन पर देखें]",
+    "ai.suggest_reason": "सुझाव इसलिए, क्योंकि विवरण में ये शब्द हैं: {words}।",
+    "ai.suggest_reason_none": "कोई साफ़ शब्द नहीं मिला, इसलिए सावधानी वाला सुझाव दिया है। कृपया जाँच लीजिए।",
+}
+
+_MR = {
+    "severity.low": "कमी", "severity.medium": "मध्यम", "severity.high": "गंभीर", "severity.critical": "अतिशय गंभीर",
+
+    "hazard.unsafe_machine": "असुरक्षित मशीन", "hazard.slippery_floor": "निसरडी जमीन", "hazard.exposed_wire": "उघडी वायर",
+    "hazard.missing_ppe": "सुरक्षा साधने नाहीत", "hazard.excessive_noise": "मोठा आवाज", "hazard.poor_lighting": "कमी उजेड",
+    "hazard.chemical_leak": "रसायन गळती", "hazard.unsafe_lifting": "असुरक्षितपणे उचलणे",
+    "hazard.fire_hazard": "आगीचा धोका", "hazard.blocked_exit": "बंद बाहेर पडण्याचा मार्ग",
+    "hazard.ergonomic": "शरीराची चुकीची स्थिती", "hazard.other": "इतर काही",
+
+    "incident_status.reported": "नोंदवले", "incident_status.assigned": "सोपवले",
+    "incident_status.investigating": "तपास सुरू", "incident_status.corrective_action": "सुधारणेचे काम",
+    "incident_status.verification": "पडताळणी", "incident_status.closed": "बंद",
+    "hazard_status.open": "उघडा", "hazard_status.in_review": "तपासणीत", "hazard_status.controlled": "नियंत्रणात",
+    "hazard_status.closed": "बंद",
+
+    "note.incident_reported.title": "{severity} घटना नोंदवली{where}: {title}",
+    "note.incident_reported.body": "{reference}, {name} यांनी नोंदवली.",
+    "note.injury": "कोणालातरी इजा झाली आहे.",
+    "note.hazard_reported.title": "{severity} धोका नोंदवला{where}: {category}",
+    "note.hazard_reported.body": "{reference}, {name} यांनी नोंदवला.",
+    "note.hazard_reported.anonymous": "{reference} नाव न देता नोंदवला.",
+    "note.where": " ({place})",
+    "note.received_incident.title": "तुमचा अहवाल {reference} मिळाला",
+    "note.received_incident.body": "तुमच्या सुपरवायझरला कळवले आहे. 'माझे अहवाल' मध्ये तुम्ही प्रगती पाहू शकता.",
+    "note.received_hazard.title": "तुमचा धोक्याचा अहवाल {reference} मिळाला",
+    "note.received_hazard.body": "तुमच्या सुपरवायझरला कळवले आहे.",
+    "note.status.title": "{reference} ची स्थिती आता: {status}",
+    "note.status.body": "{name} यांनी बदलली.",
+    "note.status.body_note": "{name} यांनी बदलली: \"{note}\"",
+    "note.assigned.title": "तुम्हाला {reference} चा तपास सोपवला आहे",
+    "note.assigned.body": "{title}. {name} यांनी सोपवला.",
+    "note.emergency.title": "आणीबाणी: {type} ({where})",
+    "note.emergency.body": "{name} यांनी पाठवले{phone}.",
+    "note.emergency.phone": ", फोन {phone}",
+    "note.emergency.notes": " माहिती: {notes}",
+    "note.no_location": "जागा सांगितली नाही",
+
+    "emergency.first_step": "कोणाच्याही जिवाला लगेच धोका असेल, तर अलार्म वाजवा आणि आत्ताच साइटचा आणीबाणी नंबर लावा.",
+    "emergency.fire.label": "आग किंवा धूर",
+    "emergency.fire.steps": [
+        "अलार्म वाजवा: मोठ्याने \"आग\" ओरडा आणि जवळचा फायर अलार्म दाबा.",
+        "जवळच्या सुरक्षित मार्गाने बाहेर पडा. लिफ्ट वापरू नका आणि सामान घ्यायला थांबू नका.",
+        "सुरक्षित असेल तर मागचे दरवाजे बंद करा.",
+        "जमण्याच्या जागी (असेंब्ली पॉइंट) जा आणि कोणी दिसत नसेल तर फायर वॉर्डनला सांगा.",
+        "प्रशिक्षण असेल, आग लहान असेल आणि बाहेर पडायचा मार्ग मागे असेल, तरच अग्निशामक वापरा.",
+    ],
+    "emergency.medical.label": "कोणी जखमी किंवा आजारी आहे",
+    "emergency.medical.steps": [
+        "जवळ जाण्याआधी तिथे तुम्हाला धोका नाही ना, हे पाहा.",
+        "प्रशिक्षित प्रथमोपचार करणाऱ्याला बोलवा आणि साइटचा आणीबाणी नंबर लावा.",
+        "त्या जागी जिवाला धोका नसेल तर जखमी व्यक्तीला हलवू नका.",
+        "त्यांच्यासोबत राहा, त्यांना शांत ठेवा आणि मदत करणाऱ्यांना आणायला कोणालातरी पाठवा.",
+    ],
+    "emergency.chemical_spill.label": "रसायन सांडणे किंवा गळणे",
+    "emergency.chemical_spill.steps": [
+        "सांडलेल्या रसायनापासून दूर व्हा आणि इतरांनाही दूर ठेवा.",
+        "त्याला हात लावू नका, वास घेऊ नका आणि ओळखायचा प्रयत्न करू नका.",
+        "अलार्म वाजवा आणि कोणत्या जागी व (माहीत असल्यास) कोणत्या डब्यातून गळती आहे ते सुपरवायझरला सांगा.",
+        "फक्त प्रशिक्षित लोकांनीच योग्य सुरक्षा साधने घालून साफसफाई करावी.",
+    ],
+    "emergency.machinery.label": "मशीन अपघात",
+    "emergency.machinery.steps": [
+        "सुरक्षितपणे पोहोचता येत असेल तर इमर्जन्सी स्टॉप बटण दाबा.",
+        "मशीनमध्ये हात घालू नका आणि अडकलेल्या व्यक्तीला स्वतः सोडवायचा प्रयत्न करू नका.",
+        "मदत बोलवा आणि इतरांना मशीनपासून दूर ठेवा.",
+        "सुपरवायझर सांगेपर्यंत मशीन बंद आणि लॉक ठेवा.",
+    ],
+    "emergency.electrical.label": "विजेचा अपघात",
+    "emergency.electrical.steps": [
+        "व्यक्ती किंवा उपकरणात करंट असू शकतो, तर त्यांना हात लावू नका.",
+        "सुरक्षित असेल आणि मेन स्विच कुठे आहे हे माहीत असेल, तरच तो बंद करा.",
+        "सगळ्यांना दूर ठेवा आणि अलार्म वाजवा.",
+        "पात्र इलेक्ट्रिशियन किंवा प्रशिक्षित व्यक्तीची वाट पाहा.",
+    ],
+    "emergency.other.label": "इतर आणीबाणी",
+    "emergency.other.steps": [
+        "स्वतःला आणि इतरांना धोक्यापासून दूर न्या.",
+        "अलार्म वाजवा आणि साइटचा आणीबाणी नंबर लावा.",
+        "काय झाले आणि कुठे झाले ते सुपरवायझरला सांगा.",
+    ],
+    "emergency.supervisor_contact": "तुमचे सुपरवायझर, {name}",
+    "emergency.alert_sent": "अलर्ट पाठवला. ॲपमध्ये {count} लोकांना कळवले आहे. तरीही मदतीसाठी फोन नक्की करा.",
+    "emergency.alert_sent_one": "अलर्ट पाठवला. ॲपमध्ये 1 व्यक्तीला कळवले आहे. तरीही मदतीसाठी फोन नक्की करा.",
+    "note.action_assigned.title": "{reference} वर तुमच्यासाठी नवीन काम",
+    "note.action_assigned.body": "{description} अंतिम तारीख {due}. {name} यांनी दिले.",
+    "note.action_done.title": "{reference} चे काम पूर्ण झाले",
+    "note.action_done.body": "{name} यांनी पूर्ण केले.",
+    "note.action_done.body_note": "{name} यांनी पूर्ण केले: \"{note}\"",
+    "emergency.public.emergency": "राष्ट्रीय आणीबाणी क्रमांक (सर्व सेवा)",
+    "emergency.public.police": "पोलीस",
+    "emergency.public.fire": "अग्निशमन दल",
+    "emergency.public.ambulance": "रुग्णवाहिका",
+    "emergency.public.women": "महिला हेल्पलाइन",
+    "emergency.public.disaster": "आपत्ती व्यवस्थापन",
+    "emergency.incident_title": "आणीबाणी अलार्म: {type}",
+    "emergency.incident_body": "{name} यांनी आणीबाणी मोडमधून पाठवला. सर्वांना अलार्म मिळाला आणि सुरक्षित असल्याची खात्री करायला सांगितले. पुन्हा असे होऊ नये म्हणून कारणाची चौकशी करा.",
+    "note.alarm.body": "{name} यांनी पाठवला{phone}. ॲप उघडा, सूचना पाळा आणि तुम्ही सुरक्षित आहात का ते सांगा.",
+    "note.resolved.title": "धोका टळला: {type} आणीबाणी संपली",
+    "note.resolved.body": "{name} यांनी बंद केली.",
+    "note.resolved.body_note": '{name} यांनी बंद केली: "{note}"',
+    "note.need_help.title": "{name} यांना मदत हवी आहे ({type} आणीबाणी)",
+    "note.need_help.body": "अलार्म स्क्रीनवरून पाठवले{phone}. शेवटची माहीत असलेली जागा: {where}.",
+
+    "ai.escalation": "ही आणीबाणी वाटते. कोणाला धोका असेल तर अलार्म वाजवा आणि आत्ताच साइटचा आणीबाणी नंबर लावा. काय "
+                     "करायचे ते पाहण्यासाठी आणि सुपरवायझरला कळवण्यासाठी या ॲपमध्ये 'आणीबाणी' उघडा.",
+    "ai.medical": "मी वैद्यकीय सल्ला देऊ शकत नाही किंवा आजार ओळखू शकत नाही. कोणी जखमी असेल किंवा बरे वाटत नसेल, तर "
+                  "आत्ताच प्रथमोपचार करणाऱ्याला बोलवा, आणि बरे न वाटल्यास डॉक्टरांना दाखवा.",
+    "ai.unavailable": "SafeAssist आत्ता उत्तर देऊ शकले नाही. एका मिनिटाने पुन्हा प्रयत्न करा. तातडीचे असेल तर "
+                      "'आणीबाणी' उघडा किंवा सुपरवायझरला सांगा.",
+    "ai.number_removed": "[नंबर काढला: खरे नंबर 'आणीबाणी' स्क्रीनवर पाहा]",
+    "ai.suggest_reason": "हे सुचवले कारण वर्णनात हे शब्द आहेत: {words}.",
+    "ai.suggest_reason_none": "स्पष्ट शब्द सापडले नाहीत, म्हणून सावधगिरीने सुचवले आहे. कृपया तपासा.",
+}
+
+_DE = {
+    "severity.low": "Gering", "severity.medium": "Mittel", "severity.high": "Hoch", "severity.critical": "Kritisch",
+
+    "hazard.unsafe_machine": "Unsichere Maschine", "hazard.slippery_floor": "Rutschiger Boden",
+    "hazard.exposed_wire": "Freiliegendes Kabel", "hazard.missing_ppe": "Fehlende PSA", "hazard.excessive_noise": "Starker Lärm",
+    "hazard.poor_lighting": "Schlechte Beleuchtung", "hazard.chemical_leak": "Chemikalienaustritt",
+    "hazard.unsafe_lifting": "Unsicheres Heben", "hazard.fire_hazard": "Brandgefahr",
+    "hazard.blocked_exit": "Blockierter Notausgang", "hazard.ergonomic": "Ungünstige Körperhaltung",
+    "hazard.other": "Etwas anderes",
+
+    "incident_status.reported": "Gemeldet", "incident_status.assigned": "Zugewiesen",
+    "incident_status.investigating": "In Untersuchung", "incident_status.corrective_action": "Korrekturmaßnahme",
+    "incident_status.verification": "Überprüfung", "incident_status.closed": "Abgeschlossen",
+    "hazard_status.open": "Offen", "hazard_status.in_review": "In Prüfung", "hazard_status.controlled": "Unter Kontrolle",
+    "hazard_status.closed": "Abgeschlossen",
+
+    "note.incident_reported.title": "Vorfall ({severity}) gemeldet{where}: {title}",
+    "note.incident_reported.body": "{reference}, gemeldet von {name}.",
+    "note.injury": "Jemand wurde verletzt.",
+    "note.hazard_reported.title": "Gefahr ({severity}) gemeldet{where}: {category}",
+    "note.hazard_reported.body": "{reference}, gemeldet von {name}.",
+    "note.hazard_reported.anonymous": "{reference}, anonym gemeldet.",
+    "note.where": " in {place}",
+    "note.received_incident.title": "Ihre Meldung {reference} ist eingegangen",
+    "note.received_incident.body": "Ihre Vorgesetzte bzw. Ihr Vorgesetzter wurde benachrichtigt. Den Fortschritt sehen Sie unter „Meine Meldungen“.",
+    "note.received_hazard.title": "Ihre Gefahrenmeldung {reference} ist eingegangen",
+    "note.received_hazard.body": "Ihre Vorgesetzte bzw. Ihr Vorgesetzter wurde benachrichtigt.",
+    "note.status.title": "{reference} hat jetzt den Status: {status}",
+    "note.status.body": "Aktualisiert von {name}.",
+    "note.status.body_note": "Aktualisiert von {name}: „{note}“",
+    "note.assigned.title": "Sie sollen {reference} untersuchen",
+    "note.assigned.body": "{title}. Zugewiesen von {name}.",
+    "note.emergency.title": "NOTFALL: {type} ({where})",
+    "note.emergency.body": "Ausgelöst von {name}{phone}.",
+    "note.emergency.phone": ", Telefon {phone}",
+    "note.emergency.notes": " Hinweise: {notes}",
+    "note.no_location": "Ort nicht angegeben",
+
+    "emergency.first_step": "Wenn jemand in unmittelbarer Gefahr ist: Alarm auslösen und sofort die Notrufnummer Ihres Standorts anrufen.",
+    "emergency.fire.label": "Feuer oder Rauch",
+    "emergency.fire.steps": [
+        "Alarm auslösen: laut „Feuer“ rufen und den nächsten Feuermelder betätigen.",
+        "Über den nächsten sicheren Ausgang hinausgehen. Keine Aufzüge benutzen und keine Sachen mitnehmen.",
+        "Türen hinter sich schließen, wenn das gefahrlos möglich ist.",
+        "Zum Sammelplatz gehen und dem Brandschutzhelfer melden, wenn jemand fehlt.",
+        "Einen Feuerlöscher nur benutzen, wenn Sie geschult sind, das Feuer klein ist und der Ausgang hinter Ihnen liegt.",
+    ],
+    "emergency.medical.label": "Jemand ist verletzt oder krank",
+    "emergency.medical.steps": [
+        "Prüfen Sie, ob der Bereich für Sie sicher ist, bevor Sie hingehen.",
+        "Einen ausgebildeten Ersthelfer und die Notrufnummer des Standorts anrufen.",
+        "Die Person nicht bewegen, außer sie ist an ihrem Ort in unmittelbarer Gefahr.",
+        "Bei der Person bleiben, sie beruhigen und jemanden zu den Rettungskräften schicken.",
+    ],
+    "emergency.chemical_spill.label": "Chemikalie ausgelaufen",
+    "emergency.chemical_spill.steps": [
+        "Von der ausgelaufenen Stelle weggehen und andere fernhalten.",
+        "Den Stoff nicht berühren, nicht daran riechen und nicht versuchen, ihn zu bestimmen.",
+        "Alarm auslösen und der Vorgesetzten bzw. dem Vorgesetzten Bereich und, falls bekannt, Behälter nennen.",
+        "Nur geschultes Personal mit passender PSA darf aufräumen.",
+    ],
+    "emergency.machinery.label": "Unfall an einer Maschine",
+    "emergency.machinery.steps": [
+        "Den Not-Halt drücken, wenn Sie ihn gefahrlos erreichen.",
+        "Nicht in die Maschine greifen und eingeklemmte Personen nicht selbst befreien.",
+        "Hilfe rufen und andere von der Maschine fernhalten.",
+        "Die Maschine gestoppt und gesperrt lassen, bis sie freigegeben wird.",
+    ],
+    "emergency.electrical.label": "Elektrischer Unfall",
+    "emergency.electrical.steps": [
+        "Person oder Gerät nicht berühren, wenn noch Spannung anliegen kann.",
+        "Den Strom nur abschalten, wenn das sicher ist und Sie den Schalter kennen.",
+        "Alle fernhalten und Alarm auslösen.",
+        "Auf eine Elektrofachkraft oder geschulte Helfer warten.",
+    ],
+    "emergency.other.label": "Anderer Notfall",
+    "emergency.other.steps": [
+        "Sich selbst und andere aus der Gefahr bringen.",
+        "Alarm auslösen und die Notrufnummer des Standorts anrufen.",
+        "Der Vorgesetzten bzw. dem Vorgesetzten sagen, was wo passiert ist.",
+    ],
+    "emergency.supervisor_contact": "Ihre Vorgesetzte / Ihr Vorgesetzter, {name}",
+    "emergency.alert_sent": "Alarm gesendet. {count} Personen wurden in der App benachrichtigt. Das ersetzt keinen Notruf.",
+    "emergency.alert_sent_one": "Alarm gesendet. 1 Person wurde in der App benachrichtigt. Das ersetzt keinen Notruf.",
+    "note.action_assigned.title": "Neue Maßnahme für Sie zu {reference}",
+    "note.action_assigned.body": "{description} Fällig am {due}. Zugewiesen von {name}.",
+    "note.action_done.title": "Maßnahme zu {reference} erledigt",
+    "note.action_done.body": "Erledigt von {name}.",
+    "note.action_done.body_note": "Erledigt von {name}: \"{note}\"",
+    "emergency.public.emergency": "Notruf (alle Dienste)",
+    "emergency.public.police": "Polizei",
+    "emergency.public.fire": "Feuerwehr",
+    "emergency.public.ambulance": "Rettungsdienst",
+    "emergency.public.women": "Frauen-Hilfetelefon",
+    "emergency.public.disaster": "Katastrophenschutz",
+    "emergency.incident_title": "Notfallalarm: {type}",
+    "emergency.incident_body": "Von {name} im Notfallmodus ausgelöst. Alle wurden alarmiert und gebeten zu bestätigen, dass sie in Sicherheit sind. Ursache untersuchen, damit es nicht wieder passiert.",
+    "note.alarm.body": "Ausgelöst von {name}{phone}. App öffnen, Schritte befolgen und melden, ob Sie in Sicherheit sind.",
+    "note.resolved.title": "Entwarnung: Der Notfall ({type}) ist vorbei",
+    "note.resolved.body": "Beendet von {name}.",
+    "note.resolved.body_note": 'Beendet von {name}: "{note}"',
+    "note.need_help.title": "{name} braucht Hilfe (Notfall: {type})",
+    "note.need_help.body": "Vom Alarmbildschirm gesendet{phone}. Zuletzt bekannter Bereich: {where}.",
+
+    "ai.escalation": "Das klingt nach einem Notfall. Wenn jemand in Gefahr ist: Alarm auslösen und sofort die "
+                     "Notrufnummer Ihres Standorts anrufen. Öffnen Sie den Notfallmodus in dieser App für die "
+                     "nächsten Schritte und um Ihre Vorgesetzten zu alarmieren.",
+    "ai.medical": "Ich kann keinen medizinischen Rat geben und nichts diagnostizieren. Wenn jemand verletzt ist oder "
+                  "sich unwohl fühlt, holen Sie sofort einen Ersthelfer und gehen Sie zum Arzt, wenn es nicht besser wird.",
+    "ai.unavailable": "SafeAssist konnte gerade nicht antworten. Versuchen Sie es in einer Minute erneut. Bei "
+                      "Dringendem nutzen Sie den Notfallmodus oder sprechen Sie Ihre Vorgesetzten an.",
+    "ai.number_removed": "[Nummer entfernt: echte Kontakte stehen im Notfallmodus]",
+    "ai.suggest_reason": "Vorschlag, weil die Beschreibung Folgendes erwähnt: {words}.",
+    "ai.suggest_reason_none": "Keine eindeutigen Stichwörter gefunden, daher ein vorsichtiger Standardvorschlag. Bitte prüfen.",
+}
+
+MESSAGES: dict[Language, dict] = {Language.en: _EN, Language.hi: _HI, Language.mr: _MR, Language.de: _DE}
+
+
+def lang_of(value) -> Language:
+    try:
+        return Language(value) if value else Language.en
+    except ValueError:
+        return Language.en
+
+
+def t(lang, key: str, **values):
+    """Look up `key` in `lang`, falling back to English, and fill in {placeholders}."""
+    text = MESSAGES[lang_of(lang)].get(key, _EN[key])
+    if isinstance(text, list):
+        return [s.format(**values) for s in text]
+    return text.format(**values) if values else text
